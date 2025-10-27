@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
 
-// Mock database for development
 let useMockDatabase = false;
 const mockTransactions = new Map();
 
@@ -12,12 +11,11 @@ const connectDatabase = async () => {
       await mongoose.connect(mongoURI, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
-        serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+        serverSelectionTimeoutMS: 5000,
       });
       
       console.log('✅ MongoDB connected successfully');
-      
-      // Event listeners
+
       mongoose.connection.on('error', (err) => {
         console.error('MongoDB connection error:', err);
       });
