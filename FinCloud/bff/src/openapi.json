@@ -1,0 +1,153 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Fin BFF API",
+    "version": "1.0.0",
+    "description": "BFF que expõe /api/users e /api/transactions (proxy para user-service e transaction-service)"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Local BFF"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": { "description": "OK" }
+        }
+      }
+    },
+    "/users/register": {
+      "post": {
+        "summary": "Register a new user (proxied to user-service)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserCreate" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created" },
+          "400": { "description": "Bad request" }
+        }
+      }
+    },
+    "/users/login": {
+      "post": {
+        "summary": "Login user (proxied)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserLogin" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Auth token + user" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/users/profile/{id}": {
+      "get": {
+        "summary": "Get user profile by id",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "User profile" }, "404": { "description": "Not found" } }
+      },
+      "put": {
+        "summary": "Update user profile",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserUpdate" } } } },
+        "responses": { "200": { "description": "Updated" } }
+      },
+      "delete": {
+        "summary": "Delete user profile",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Deleted" } }
+      }
+    },
+    "/transactions": {
+      "post": {
+        "summary": "Create a transaction (proxied)",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TransactionCreate" } } } },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/transactions/user/{userId}": {
+      "get": {
+        "summary": "List transactions for a user",
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Array of transactions" } }
+      }
+    },
+    "/transactions/{id}": {
+      "get": {
+        "summary": "Get a single transaction",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Transaction" }, "404": { "description": "Not found" } }
+      },
+      "put": {
+        "summary": "Update a transaction",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TransactionUpdate" } } } },
+        "responses": { "200": { "description": "Updated" } }
+      },
+      "delete": {
+        "summary": "Delete a transaction",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "204": { "description": "Deleted" } }
+      }
+    },
+    "/transactions/user/{userId}/summary": {
+      "get": {
+        "summary": "Get summary for user",
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Summary object" } }
+      }
+    },
+    "/transactions/user/{userId}/categories": {
+      "get": {
+        "summary": "Get categories for user",
+        "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Category list" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UserCreate": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "format": "email" },
+          "password": { "type": "string" },
+          "name": { "type": "string" }
+        },
+        "required": ["email","password","name"]
+      },
+      "UserLogin": {
+        "type": "object",
+        "properties": { "email": { "type": "string" }, "password": { "type": "string" } },
+        "required": ["email","password"]
+      },
+      "UserUpdate": { "type": "object", "properties": { "name": { "type": "string" } } },
+      "TransactionCreate": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string" },
+          "amount": { "type": "number" },
+          "category": { "type": "string" },
+          "date": { "type": "string", "format": "date-time" },
+          "description": { "type": "string" }
+        },
+        "required": ["userId","amount","category","date"]
+      },
+      "TransactionUpdate": { "type": "object", "properties": { "amount": { "type": "number" }, "category": { "type": "string" } } }
+    }
+  }
+}

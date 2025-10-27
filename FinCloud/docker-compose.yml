@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: fin-sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=FinApp123!
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./sqlserver-init:/docker-entrypoint-initdb.d
+    networks:
+      - fin-network
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7.0
+    container_name: fin-mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=finuser
+      - MONGO_INITDB_ROOT_PASSWORD=FinApp123!
+      - MONGO_INITDB_DATABASE=fin_transactions
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongodb-init:/docker-entrypoint-initdb.d
+    networks:
+      - fin-network
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+  mongodb_data:
+
+networks:
+  fin-network:
+    driver: bridge
