@@ -11,6 +11,9 @@ const openapi = require('./openapi.json');
 const userRoutes = require('./routes/userRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const healthRoutes = require('./routes/healthRoutes');
+const aggregationRoutes = require('./routes/aggregationRoutes');
+const mongodbRoutes = require('./routes/mongodbRoutes');
+const azuresqlRoutes = require('./routes/azuresqlRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,6 +50,9 @@ app.get('/api/openapi.json', (req, res) => res.json(openapi));
 app.use('/api/health', healthRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/aggregation', aggregationRoutes);
+app.use('/api/mongodb', mongodbRoutes);
+app.use('/api/azuresql', azuresqlRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

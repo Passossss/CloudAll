@@ -1,9 +1,11 @@
+import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { useState } from "react";
 import finLogo from "../assets/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
+import { apiService } from "../services/api";
+import { toast } from "sonner";
 
 interface LoginProps {
   onPageChange: (page: string) => void;
@@ -16,6 +18,43 @@ export function Login({ onPageChange }: LoginProps) {
     password: ""
   });
   const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
+    if (!formData.email || !formData.password) {
+      toast.error('Por favor, preencha todos os campos');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await apiService.loginUser({
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (response.error) {
+        toast.error(response.error || 'Erro ao fazer login');
+        return;
+      }
+
+      if (response.data) {
+        toast.success('Login realizado com sucesso!');
+        
+        setTimeout(() => {
+          onPageChange('dashboard');
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Erro ao fazer login:', error);
+      toast.error('Erro ao fazer login. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F87B07] p-4">
@@ -34,7 +73,7 @@ export function Login({ onPageChange }: LoginProps) {
           </div>
 
           {/* Formulário */}
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <Input
@@ -88,9 +127,10 @@ export function Login({ onPageChange }: LoginProps) {
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-[#F87B07] hover:bg-[#f87b07]/90 text-white font-medium rounded-lg"
+              disabled={isLoading}
+              className="w-full h-12 bg-[#F87B07] hover:bg-[#f87b07]/90 text-white font-medium rounded-lg disabled:opacity-50"
             >
-              Entrar
+              {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
 

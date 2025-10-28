@@ -1,22 +1,15 @@
-const express = require('express');
+﻿const express = require('express');
 const Joi = require('joi');
-let Transaction = require('../models/Transaction');
-
-// Check if we should use mock database
-const shouldUseMock = () => {
-  const mongoose = require('mongoose');
-  return !mongoose.connection.readyState;
-};
+const { getTransactionRepository } = require('../config/database');
 
 const router = express.Router();
 
-// Validação schemas
 const transactionSchema = Joi.object({
   userId: Joi.string().required(),
   amount: Joi.number().not(0).required(),
   description: Joi.string().max(200).required(),
   category: Joi.string().valid(
-    'food', 'transport', 'entertainment', 'shopping', 'bills', 
+    'food', 'transport', 'entertainment', 'shopping', 'bills',
     'health', 'education', 'salary', 'freelance', 'investment',
     'gift', 'other'
   ).required(),
@@ -27,61 +20,41 @@ const transactionSchema = Joi.object({
   recurringPeriod: Joi.string().valid('daily', 'weekly', 'monthly', 'yearly').optional()
 });
 
-// Criar nova transação
 router.post('/', async (req, res) => {
   try {
     const { error, value } = transactionSchema.validate(req.body);
     if (error) {
-      return res.status(400).json({ 
-        error: 'Validation error', 
-        details: error.details 
-      });
+      return res.status(400).json({ error: 'Validation error', details: error.details });
     }
 
-    // Ajustar valor baseado no tipo
     if (value.type === 'expense' && value.amount > 0) {
       value.amount = -Math.abs(value.amount);
     } else if (value.type === 'income' && value.amount < 0) {
       value.amount = Math.abs(value.amount);
     }
 
-    // Use mock transaction if database is not available
-    if (shouldUseMock()) {
-      const MockTransaction = require('../models/Transaction');
-      const transaction = new MockTransaction(value);
-      await transaction.save();
-      return res.status(201).json({
-        message: 'Transaction created successfully',
-        transaction
-      });
-    }
-    
-    const transaction = new Transaction(value);
-    await transaction.save();
+    const transactionRepo = getTransactionRepository();
+    const transaction = transactionRepo.create(value);
+    await transactionRepo.save(transaction);
 
     res.status(201).json({
       message: 'Transaction created successfully',
       transaction
     });
-
   } catch (error) {
     console.error('Create transaction error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: 'Erro interno do servidor'
-    });
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
 });
 
-// Obter transações de um usuário
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const { page = 1, limit = 20, category, type, startDate, endDate } = req.query;
-
+    
+    const transactionRepo = getTransactionRepository();
     const filter = { userId };
 
-    // Filtros opcionais
     if (category) filter.category = category;
     if (type) filter.type = type;
     if (startDate || endDate) {
@@ -90,138 +63,105 @@ router.get('/user/:userId', async (req, res) => {
       if (endDate) filter.date.$lte = new Date(endDate);
     }
 
-    const transactions = await Transaction
-      .find(filter)
-      .sort({ date: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
+    const skip = (page - 1) * limit;
+    const transactions = await transactionRepo.find({
+      where: filter,
+      order: { date: 'DESC' },
+      take: parseInt(limit),
+      skip: skip
+    });
 
-    const total = await Transaction.countDocuments(filter);
+    const total = await transactionRepo.count({ where: filter });
 
     res.json({
       transactions,
       pagination: {
-        current: page,
+        current: parseInt(page),
         pages: Math.ceil(total / limit),
         total
       }
     });
-
   } catch (error) {
     console.error('Get transactions error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: 'Erro interno do servidor'
-    });
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
 });
 
-// Obter transação específica
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const transactionRepo = getTransactionRepository();
     
-    const transaction = await Transaction.findById(id);
+    const transaction = await transactionRepo.findOne({ where: { id } });
     if (!transaction) {
-      return res.status(404).json({ 
-        error: 'Transaction not found',
-        message: 'Transação não encontrada'
-      });
+      return res.status(404).json({ error: 'Transaction not found', message: 'Transação não encontrada' });
     }
 
     res.json({ transaction });
-
   } catch (error) {
     console.error('Get transaction error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: 'Erro interno do servidor'
-    });
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
 });
 
-// Atualizar transação
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
     const { error, value } = transactionSchema.validate(req.body);
     if (error) {
-      return res.status(400).json({ 
-        error: 'Validation error', 
-        details: error.details 
-      });
+      return res.status(400).json({ error: 'Validation error', details: error.details });
     }
 
-    // Ajustar valor baseado no tipo
     if (value.type === 'expense' && value.amount > 0) {
       value.amount = -Math.abs(value.amount);
     } else if (value.type === 'income' && value.amount < 0) {
       value.amount = Math.abs(value.amount);
     }
 
-    const transaction = await Transaction.findByIdAndUpdate(
-      id, 
-      value, 
-      { new: true, runValidators: true }
-    );
-
+    const transactionRepo = getTransactionRepository();
+    const transaction = await transactionRepo.findOne({ where: { id } });
+    
     if (!transaction) {
-      return res.status(404).json({ 
-        error: 'Transaction not found',
-        message: 'Transação não encontrada'
-      });
+      return res.status(404).json({ error: 'Transaction not found', message: 'Transação não encontrada' });
     }
+
+    await transactionRepo.update({ id }, value);
+    const updated = await transactionRepo.findOne({ where: { id } });
 
     res.json({
       message: 'Transaction updated successfully',
-      transaction
+      transaction: updated
     });
-
   } catch (error) {
     console.error('Update transaction error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: 'Erro interno do servidor'
-    });
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
 });
 
-// Deletar transação
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const transactionRepo = getTransactionRepository();
     
-    const transaction = await Transaction.findByIdAndDelete(id);
+    const transaction = await transactionRepo.findOne({ where: { id } });
     if (!transaction) {
-      return res.status(404).json({ 
-        error: 'Transaction not found',
-        message: 'Transação não encontrada'
-      });
+      return res.status(404).json({ error: 'Transaction not found', message: 'Transação não encontrada' });
     }
 
-    res.json({ 
-      message: 'Transaction deleted successfully',
-      message_pt: 'Transação excluída com sucesso'
-    });
+    await transactionRepo.delete({ id });
 
+    res.json({ message: 'Transaction deleted successfully', message_pt: 'Transação excluída com sucesso' });
   } catch (error) {
     console.error('Delete transaction error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: 'Erro interno do servidor'
-    });
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
 });
 
-// Resumo financeiro do usuário
 router.get('/user/:userId/summary', async (req, res) => {
   try {
     const { userId } = req.params;
     const { period = '30d' } = req.query;
 
-    // Calcular datas baseado no período
     const endDate = new Date();
     const startDate = new Date();
     
@@ -242,14 +182,36 @@ router.get('/user/:userId/summary', async (req, res) => {
         startDate.setDate(endDate.getDate() - 30);
     }
 
-    const [summary, categorySummary] = await Promise.all([
-      Transaction.getFinancialSummary(userId, startDate, endDate),
-      Transaction.getCategorySummary(userId, startDate, endDate)
-    ]);
+    const transactionRepo = getTransactionRepository();
+    const transactions = await transactionRepo.find({
+      where: {
+        userId,
+        date: { $gte: startDate, $lte: endDate }
+      }
+    });
 
-    const income = summary.find(s => s._id === 'income')?.total || 0;
-    const expenses = Math.abs(summary.find(s => s._id === 'expense')?.total || 0);
+    const summary = transactions.reduce((acc, t) => {
+      if (!acc[t.type]) {
+        acc[t.type] = { total: 0, count: 0 };
+      }
+      acc[t.type].total += t.amount;
+      acc[t.type].count += 1;
+      return acc;
+    }, {});
+
+    const income = summary.income?.total || 0;
+    const expenses = Math.abs(summary.expense?.total || 0);
     const balance = income - expenses;
+
+    const categoryData = transactions.reduce((acc, t) => {
+      const key = `${t.category}-${t.type}`;
+      if (!acc[key]) {
+        acc[key] = { category: t.category, type: t.type, total: 0, count: 0 };
+      }
+      acc[key].total += Math.abs(t.amount);
+      acc[key].count += 1;
+      return acc;
+    }, {});
 
     res.json({
       period,
@@ -257,21 +219,16 @@ router.get('/user/:userId/summary', async (req, res) => {
         income,
         expenses,
         balance,
-        total_transactions: summary.reduce((acc, s) => acc + s.count, 0)
+        total_transactions: transactions.length
       },
-      categories: categorySummary
+      categories: Object.values(categoryData).sort((a, b) => b.total - a.total)
     });
-
   } catch (error) {
     console.error('Get summary error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: 'Erro interno do servidor'
-    });
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
 });
 
-// Categorias mais utilizadas
 router.get('/user/:userId/categories', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -281,36 +238,31 @@ router.get('/user/:userId/categories', async (req, res) => {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - parseInt(period.replace('d', '')));
 
-    const categories = await Transaction.aggregate([
-      {
-        $match: {
-          userId: userId,
-          date: { $gte: startDate, $lte: endDate }
-        }
-      },
-      {
-        $group: {
-          _id: '$category',
-          count: { $sum: 1 },
-          total_amount: { $sum: { $abs: '$amount' } }
-        }
-      },
-      {
-        $sort: { count: -1 }
-      },
-      {
-        $limit: 10
+    const transactionRepo = getTransactionRepository();
+    const transactions = await transactionRepo.find({
+      where: {
+        userId,
+        date: { $gte: startDate, $lte: endDate }
       }
-    ]);
+    });
+
+    const categoryData = transactions.reduce((acc, t) => {
+      if (!acc[t.category]) {
+        acc[t.category] = { _id: t.category, count: 0, total_amount: 0 };
+      }
+      acc[t.category].count += 1;
+      acc[t.category].total_amount += Math.abs(t.amount);
+      return acc;
+    }, {});
+
+    const categories = Object.values(categoryData)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
 
     res.json({ categories });
-
   } catch (error) {
     console.error('Get categories error:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: 'Erro interno do servidor'
-    });
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
 });
 

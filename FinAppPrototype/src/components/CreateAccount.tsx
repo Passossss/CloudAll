@@ -1,9 +1,11 @@
+import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { useState } from "react";
 import finLogo from "../assets/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
+import { apiService } from "../services/api";
+import { toast } from "sonner";
 
 interface CreateAccountProps {
   onPageChange: (page: string) => void;
@@ -19,6 +21,54 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
     confirmPassword: ""
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
+    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
+      toast.error('Por favor, preencha todos os campos');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('As senhas não coincidem');
+      return;
+    }
+
+    if (!acceptTerms) {
+      toast.error('Você precisa aceitar os termos de uso');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await apiService.registerUser({
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (response.error) {
+        toast.error(response.error || 'Erro ao criar conta');
+        return;
+      }
+
+      if (response.data) {
+        toast.success('Conta criada com sucesso!');
+        
+        setTimeout(() => {
+          onPageChange('login');
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Erro ao criar conta:', error);
+      toast.error('Erro ao criar conta. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F87B07] p-4">
@@ -37,7 +87,7 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
           </div>
 
           {/* Formulário */}
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Nome completo</label>
               <Input
@@ -125,10 +175,10 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-[#F87B07] hover:bg-[#f87b07]/90 text-white font-medium rounded-lg"
-              disabled={!acceptTerms}
+              className="w-full h-12 bg-[#F87B07] hover:bg-[#f87b07]/90 text-white font-medium rounded-lg disabled:opacity-50"
+              disabled={!acceptTerms || isLoading}
             >
-              Criar conta
+              {isLoading ? 'Criando conta...' : 'Criar conta'}
             </Button>
           </form>
 

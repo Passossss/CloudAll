@@ -33,12 +33,19 @@ const proxyToUserService = async (req, res, next) => {
   }
 };
 
-// Rotas de usuários
+// Rotas de usuários - App (normal users)
 router.post('/register', proxyToUserService);
 router.post('/login', proxyToUserService);
 router.get('/profile/:id', proxyToUserService);
 router.put('/profile/:id', proxyToUserService);
 router.delete('/profile/:id', proxyToUserService);
 router.get('/stats/:id', proxyToUserService);
+
+// Rotas de usuários - Admin (todos os usuários)
+router.get('/', proxyToUserService); // Lista todos os usuários (admin)
+router.get('/:id', proxyToUserService); // Busca usuário por ID (admin)
+router.post('/', proxyToUserService); // Cria novo usuário (admin)
+router.put('/:id', proxyToUserService); // Atualiza usuário (admin)
+router.delete('/:id', proxyToUserService); // Remove usuário (admin)
 
 module.exports = router;

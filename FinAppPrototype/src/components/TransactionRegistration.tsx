@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Textarea } from "./ui/textarea";
 import { Badge } from "./ui/badge";
 import { Calendar, DollarSign, ArrowUp, ArrowDown } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { useUser } from "../contexts/UserContext";
 import { apiService } from "../services/api";
 
@@ -28,11 +28,11 @@ export function TransactionRegistration() {
     let mounted = true;
     async function load() {
       if (!user) return;
-      const res = await apiService.getTransactions(user.id);
+      const res = await apiService.getTransactionsByUser(user.id);
       if (res && res.data) {
         if (mounted) {
           // expect res.data to be an array of transactions
-          setTransactions(res.data.transactions || res.data || []);
+          setTransactions(res.data || []);
         }
       } else {
         // keep empty list
@@ -44,19 +44,25 @@ export function TransactionRegistration() {
   }, [user]);
 
   const categories = [
-    { name: "Alimentação", type: "Despesa", color: "#ef4444" },
-    { name: "Transporte", type: "Despesa", color: "#3b82f6" },
-    { name: "Salário", type: "Receita", color: "#10b981" },
-    { name: "Entretenimento", type: "Despesa", color: "#8b5cf6" },
+    { name: "food", type: "expense", color: "#ef4444", label: "Alimentação" },
+    { name: "transport", type: "expense", color: "#3b82f6", label: "Transporte" },
+    { name: "salary", type: "income", color: "#10b981", label: "Salário" },
+    { name: "entertainment", type: "expense", color: "#8b5cf6", label: "Entretenimento" },
+    { name: "shopping", type: "expense", color: "#f59e0b", label: "Compras" },
+    { name: "bills", type: "expense", color: "#ef4444", label: "Contas" },
+    { name: "health", type: "expense", color: "#10b981", label: "Saúde" },
+    { name: "education", type: "expense", color: "#3b82f6", label: "Educação" },
+    { name: "freelance", type: "income", color: "#10b981", label: "Freelance" },
+    { name: "investment", type: "income", color: "#8b5cf6", label: "Investimento" },
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
     const selectedCategory = categories.find(cat => cat.name === formData.category);
     const amount = parseFloat(formData.amount);
     const finalAmount = formData.type === "Despesa" ? -Math.abs(amount) : Math.abs(amount);
     
-    const type = formData.type === 'Receita' ? 'income' : 'expense';
+    const type: 'income' | 'expense' = formData.type === 'Receita' ? 'income' : 'expense';
 
     if (!user) {
       toast.error('Você precisa estar logado para registrar transações');
@@ -74,14 +80,12 @@ export function TransactionRegistration() {
 
     apiService.createTransaction(payload).then(res => {
       if (res && res.data) {
-        // If API returns created transaction, append; otherwise refetch
-        const created = res.data.transaction || res.data;
-        if (created) {
-          setTransactions(prev => [created, ...(prev || [])]);
-        } else {
-          // simple refetch
-          apiService.getTransactions(user.id).then(r => {
-            setTransactions(r.data.transactions || r.data || []);
+        // Refetch transactions after creating
+        if (user) {
+          apiService.getTransactionsByUser(user.id).then(r => {
+            if (r && r.data) {
+              setTransactions(r.data || []);
+            }
           });
         }
         toast.success("Transação registrada com sucesso!");
