@@ -7,6 +7,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed-mongo": "node scripts/seed_mongo.js",
+    "wipe-and-seed": "node scripts/wipe_and_seed_mongo.js",
     "test": "jest"
   },
   "dependencies": {

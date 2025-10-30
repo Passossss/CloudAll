@@ -18,23 +18,18 @@ const azuresqlRoutes = require('./routes/azuresqlRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware de segurança
 app.use(helmet());
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Limite de 100 requests por IP
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Muitas requisições deste IP, tente novamente em 15 minutos.'
 });
 app.use(limiter);
 
-// CORS
-// Allow the frontend AND the BFF itself (so Swagger UI served by the BFF can call endpoints)
 const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:5173', 'http://localhost:3000'];
 app.use(cors({
   origin: function(origin, callback) {
-    // allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
       return callback(null, true);
@@ -42,21 +37,23 @@ app.use(cors({
       return callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Accept-Language'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
 }));
 
-// Logging
+app.options('*', cors());
+
 app.use(morgan('combined'));
 
-// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Swagger UI (expose API docs)
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openapi));
 app.get('/api/openapi.json', (req, res) => res.json(openapi));
 
-// Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/transactions', transactionRoutes);
@@ -64,7 +61,6 @@ app.use('/api/aggregation', aggregationRoutes);
 app.use('/api/mongodb', mongodbRoutes);
 app.use('/api/azuresql', azuresqlRoutes);
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   
@@ -80,7 +76,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ 
     error: 'Endpoint not found',
