@@ -1,6 +1,6 @@
 
   {
-      "name": "Admin Dashboard Microfrontend",
+      "name": "FinAdmPrototype",
       "version": "0.1.0",
       "private": true,
       "dependencies": {
@@ -30,6 +30,7 @@
           "@radix-ui/react-toggle": "^1.1.2",
           "@radix-ui/react-toggle-group": "^1.1.2",
           "@radix-ui/react-tooltip": "^1.1.8",
+          "axios": "*",
           "class-variance-authority": "^0.7.1",
           "clsx": "*",
           "cmdk": "^1.1.1",
@@ -45,9 +46,7 @@
           "recharts": "^2.15.2",
           "sonner": "^2.0.3",
           "tailwind-merge": "*",
-          "vaul": "^1.1.2",
-          "axios": "^1.6.0",
-          "@tanstack/react-query": "^5.0.0"
+          "vaul": "^1.1.2"
       },
       "devDependencies": {
           "@types/node": "^20.10.0",
@@ -55,8 +54,7 @@
           "vite": "6.3.5"
       },
       "scripts": {
-          "dev": "vite --host --port 5174",
-          "build": "vite build",
-          "preview": "vite preview --port 5174"
+          "dev": "vite",
+          "build": "vite build"
       }
   }

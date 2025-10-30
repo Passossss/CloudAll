@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { apiService } from '../../services/api';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
 interface User {
   id: string;
@@ -12,12 +11,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (credentials: { email: string; password: string }) => Promise<boolean>;
+  login: (user: User) => void;
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,47 +25,21 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Mock user for demonstration - replace with actual auth logic
+  const [user, setUser] = useState<User | null>({
+    id: '1',
+    name: 'Gustavo Passos',
+    email: 'gustavo@exemplo.com',
+    phone: '(11) 99999-9999',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
+    role: 'admin'
+  });
 
-  // Check for existing token on mount
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      // Verify token and get user data
-      // For now, we'll just set a default admin user
-      setUser({
-        id: '1',
-        name: 'Admin',
-        email: 'admin@finapp.com',
-        role: 'admin'
-      });
-    }
-    setLoading(false);
-  }, []);
-
-  const login = async (credentials: { email: string; password: string }) => {
-    try {
-      const response = await apiService.loginUser(credentials);
-      if (response.data) {
-        localStorage.setItem('authToken', response.data.token);
-        setUser({
-          id: response.data.user.id,
-          name: response.data.user.name,
-          email: response.data.user.email,
-          role: response.data.user.role as 'normal' | 'admin' || 'admin'
-        });
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
-    }
+  const login = (userData: User) => {
+    setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('authToken');
     setUser(null);
   };
 
@@ -83,8 +55,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     updateUser,
     isAuthenticated: !!user,
-    isAdmin: user?.role === 'admin',
-    loading
+    isAdmin: user?.role === 'admin'
   };
 
   return (

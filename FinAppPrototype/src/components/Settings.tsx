@@ -8,11 +8,13 @@ import { Switch } from "./ui/switch";
 import { Separator } from "./ui/separator";
 import { Badge } from "./ui/badge";
 import { User, Shield, Mail, Phone, Bell, Lock, Palette, Globe } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { useUser } from "../contexts/UserContext";
+import { userApi } from "../services/api";
 
 export function Settings() {
-  const { userType, setUserType } = useUser();
+  const { userType, user } = useUser();
+  const [localUserType, setLocalUserType] = useState<'admin' | 'normal'>(userType);
   const [profileData, setProfileData] = useState({
     name: "Gustavo Passos",
     email: "gustavo@email.com",
@@ -36,9 +38,29 @@ export function Settings() {
     toast.success("Configurações salvas com sucesso!");
   };
 
-  const handleUserTypeChange = (type: 'admin' | 'normal') => {
-    setUserType(type);
-    toast.success(`Perfil alterado para ${type === 'admin' ? 'Administrador' : 'Usuário Normal'}`);
+  const handleUserTypeChange = async (type: 'admin' | 'normal') => {
+    // Atualiza UI de forma imediata
+    setLocalUserType(type);
+
+    // Se não houver usuário autenticado, apenas notifica
+    if (!user) {
+      toast.error('Usuário não autenticado. Faça login para alterar o tipo de usuário.');
+      setLocalUserType(userType);
+      return;
+    }
+
+    try {
+      // Tenta atualizar via API de administração (se existir)
+      // Observação: em muitas APIs a mudança de role é restrita; caso a rota não exista ou retorne erro,
+      // reverteremos a alteração local e exibiremos mensagem apropriada.
+      await userApi.updateUser(user.id, { role: type });
+
+      toast.success(`Perfil alterado para ${type === 'admin' ? 'Administrador' : 'Usuário Normal'}`);
+    } catch (err) {
+      // Se falhar, reverte e informa o usuário
+      setLocalUserType(userType);
+      toast.error('Não foi possível alterar o tipo no backend. Solicite ao administrador.');
+    }
   };
 
   return (
@@ -61,10 +83,10 @@ export function Settings() {
                 <CardDescription>Informações básicas da sua conta</CardDescription>
               </div>
             </div>
-            <Badge variant={userType === 'admin' ? 'default' : 'secondary'} className="flex items-center gap-1">
-              {userType === 'admin' ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
-              {userType === 'admin' ? 'Administrador' : 'Usuário Normal'}
-            </Badge>
+              <Badge variant={localUserType === 'admin' ? 'default' : 'secondary'} className="flex items-center gap-1">
+                {localUserType === 'admin' ? <Shield className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                {localUserType === 'admin' ? 'Administrador' : 'Usuário Normal'}
+              </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -122,7 +144,7 @@ export function Settings() {
                   Administradores têm acesso completo ao sistema
                 </p>
               </div>
-              <Select value={userType} onValueChange={handleUserTypeChange}>
+              <Select value={localUserType} onValueChange={handleUserTypeChange}>
                 <SelectTrigger className="w-48">
                   <SelectValue />
                 </SelectTrigger>

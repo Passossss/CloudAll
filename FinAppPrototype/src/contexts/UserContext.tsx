@@ -1,90 +1,40 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { apiService } from '../services/api';
+import { createContext, useContext, ReactNode } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { User } from '../services/api';
 
 export type UserType = 'normal' | 'admin';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserType;
-}
-
 interface UserContextType {
   user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
   userType: UserType;
-  setUserType: (type: UserType) => void;
   isAdmin: boolean;
-  login: (credentials: { email: string; password: string }) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (data: { email: string; password: string; name: string; age?: number }) => Promise<User>;
   logout: () => void;
-  loading: boolean;
+  updateUser: (updates: Partial<User>) => Promise<User | undefined>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [userType, setUserType] = useState<UserType>('normal');
-  const [loading, setLoading] = useState(true);
+  const auth = useAuth();
 
-  // Check for existing token on mount
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      // Try to restore user object from localStorage (persisted at login)
-      const stored = localStorage.getItem('authUser');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          setUser(parsed);
-          setUserType((parsed.role as UserType) || 'normal');
-        } catch {
-          setUser(null);
-          setUserType('normal');
-        }
-      }
-    }
-    setLoading(false);
-  }, []);
-
-  const login = async (credentials: { email: string; password: string }) => {
-    try {
-      const response = await apiService.loginUser(credentials);
-      if (response.data) {
-        localStorage.setItem('authToken', response.data.token);
-        localStorage.setItem('authUser', JSON.stringify(response.data.user));
-        setUser({
-          id: response.data.user.id,
-          name: response.data.user.name,
-          email: response.data.user.email,
-          role: response.data.user.role as UserType || 'normal'
-        });
-        setUserType(response.data.user.role as UserType || 'normal');
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Login error:', error);
-      return false;
-    }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('authToken');
-    setUser(null);
-    setUserType('normal');
-  };
+  // Determine user type based on email or role (you can adjust this logic)
+  // For now, we'll check if email contains 'admin' or has a specific role
+  const userType: UserType = auth.user?.email?.includes('admin') ? 'admin' : 'normal';
+  const isAdmin = userType === 'admin';
 
   return (
-    <UserContext.Provider value={{
-      user,
-      userType,
-      setUserType,
-      isAdmin: userType === 'admin',
-      login,
-      logout,
-      loading
-    }}>
+    <UserContext.Provider
+      value={{
+        ...auth,
+        userType,
+        isAdmin,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

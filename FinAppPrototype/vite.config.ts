@@ -1,12 +1,10 @@
 
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-// ...existing code...
+  import { defineConfig } from 'vite';
+  import react from '@vitejs/plugin-react-swc';
+  import path from 'path';
 
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
-
+  export default defineConfig({
+    plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
@@ -19,8 +17,8 @@ export default defineConfig({
         'next-themes@0.4.6': 'next-themes',
         'lucide-react@0.487.0': 'lucide-react',
         'input-otp@1.4.2': 'input-otp',
-  'figma:asset/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png': './src/assets/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png',
-  'figma:asset/a782661ee70c59f23a38d1d1770684fad77db575.png': './src/assets/a782661ee70c59f23a38d1d1770684fad77db575.png',
+        'figma:asset/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png': path.resolve(__dirname, './src/assets/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png'),
+        'figma:asset/a782661ee70c59f23a38d1d1770684fad77db575.png': path.resolve(__dirname, './src/assets/a782661ee70c59f23a38d1d1770684fad77db575.png'),
         'embla-carousel-react@8.6.0': 'embla-carousel-react',
         'cmdk@1.1.1': 'cmdk',
         'class-variance-authority@0.7.1': 'class-variance-authority',
@@ -50,15 +48,15 @@ export default defineConfig({
         '@radix-ui/react-aspect-ratio@1.1.2': '@radix-ui/react-aspect-ratio',
         '@radix-ui/react-alert-dialog@1.1.6': '@radix-ui/react-alert-dialog',
         '@radix-ui/react-accordion@1.2.3': '@radix-ui/react-accordion',
-  '@': './src',
+        '@': path.resolve(__dirname, './src'),
       },
     },
     build: {
       target: 'esnext',
-      outDir: 'dist',
+      outDir: 'build',
     },
     server: {
-      port: 3000,
+      port: 5173,
       open: true,
     },
   });
