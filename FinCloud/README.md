@@ -89,6 +89,52 @@ npm run install-all
 npm run dev
 ```
 
+### Executar serviços separadamente (recomendado em desenvolvimento)
+
+Abra três terminais PowerShell e execute um serviço por terminal:
+
+```powershell
+cd "C:\Users\Gustavo Passos\Desktop\Develop\arq\FinCloud\bff"
+npm run dev
+
+cd "C:\Users\Gustavo Passos\Desktop\Develop\arq\FinCloud\user-service"
+npm run dev
+
+cd "C:\Users\Gustavo Passos\Desktop\Develop\arq\FinCloud\transaction-service"
+npm run dev
+```
+
+Para evitar que o TypeORM faça alterações automáticas no schema do banco (danger in prod), os serviços que usam TypeORM só ativam a sincronização quando a variável `TYPEORM_SYNC` está definida igual a 'true'. Por exemplo, para ativar somente no `user-service` (dev):
+
+```powershell
+#$env:TYPEORM_SYNC='true'; npm run dev
+```
+
+### Rodar a migration de alinhamento (SQL Server)
+
+Um migration SQL seguro foi gerado em `user-service/migrations/0001_align_schema.sql` que adiciona colunas ausentes apenas se elas não existirem. Para aplicá-la usando o container do SQL Server (sem instalar ferramentas locais):
+
+```powershell
+# Executa a migration no container fin-sqlserver (ajuste senha se necessário)
+docker run --rm --network fincloud_fin-network mcr.microsoft.com/mssql-tools \
+  /opt/mssql-tools/bin/sqlcmd -S fin-sqlserver -U sa -P 'FinApp123!' -d fin_users_db \
+  -i user-service/migrations/0001_align_schema.sql
+```
+
+OBS: revise o SQL antes de executar em ambientes com dados sensíveis.
+
+### Smoke test (checagem rápida)
+
+Se quiser rodar uma checagem automática que cria um usuário e uma transação (útil em CI/dev), você pode executar o script temporário `scripts/smoke-test.js` (se existir). No nosso fluxo atual removemos o script temporário para evitar artefatos, mas você pode recriá-lo rapidamente com um requisição HTTP ou usando curl/Invoke-RestMethod:
+
+```powershell
+# Exemplo simples para registrar um usuário (PowerShell)
+Invoke-RestMethod -Uri 'http://localhost:3001/api/users/register' -Method Post -Body (ConvertTo-Json @{email='smoke.test+1@example.com'; password='Passw0rd!'; name='Smoke'}) -ContentType 'application/json'
+
+# Depois crie uma transação utilizando o userId retornado:
+Invoke-RestMethod -Uri 'http://localhost:3002/api/transactions' -Method Post -Body (ConvertTo-Json @{userId='<USER_ID>'; amount=100; description='Smoke'; category='salary'; type='income'}) -ContentType 'application/json'
+```
+
 ### Acessar Aplicações
 - **FinApp (Usuário):** http://localhost:5173
 - **FinAdm (Admin):** http://localhost:5174

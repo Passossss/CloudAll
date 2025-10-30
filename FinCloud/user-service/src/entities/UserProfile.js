@@ -11,34 +11,40 @@ module.exports = new EntitySchema({
     },
     userId: {
       type: 'uuid',
-      nullable: false
+      nullable: false,
+      name: 'user_id'
     },
     monthlyIncome: {
       type: 'decimal',
       precision: 10,
       scale: 2,
-      default: 0
+      default: 0,
+      name: 'monthly_income'
     },
     financialGoals: {
       type: 'nvarchar',
       length: 'MAX',
-      nullable: true
+      nullable: true,
+      name: 'financial_goals'
     },
     spendingLimit: {
       type: 'decimal',
       precision: 10,
       scale: 2,
-      default: 0
+      default: 0,
+      name: 'spending_limit'
     },
     createdAt: {
       type: 'datetime2',
       createDate: true,
-      default: () => 'GETDATE()'
+      default: () => 'GETDATE()',
+      name: 'created_at'
     },
     updatedAt: {
       type: 'datetime2',
       updateDate: true,
-      default: () => 'GETDATE()'
+      default: () => 'GETDATE()',
+      name: 'updated_at'
     }
   },
   relations: {
@@ -46,7 +52,7 @@ module.exports = new EntitySchema({
       type: 'one-to-one',
       target: 'User',
       joinColumn: {
-        name: 'userId',
+        name: 'user_id',
         referencedColumnName: 'id'
       },
       onDelete: 'CASCADE'

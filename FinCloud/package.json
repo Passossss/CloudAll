@@ -18,6 +18,7 @@
     "start-transaction-service": "cd transaction-service && npm start",
     "test": "node test-setup.js",
     "setup": "node setup-env.js"
+    ,"db:init": "npm run --prefix user-service migrate-and-seed && npm run --prefix transaction-service seed-mongo"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

@@ -32,16 +32,19 @@ module.exports = new EntitySchema({
     createdAt: {
       type: 'datetime2',
       createDate: true,
-      default: () => 'GETDATE()'
+      default: () => 'GETDATE()',
+      name: 'created_at'
     },
     updatedAt: {
       type: 'datetime2',
       updateDate: true,
-      default: () => 'GETDATE()'
+      default: () => 'GETDATE()',
+      name: 'updated_at'
     },
     isActive: {
       type: 'bit',
-      default: true
+      default: true,
+      name: 'is_active'
     }
   },
   relations: {

@@ -8,7 +8,9 @@ const AppDataSource = new DataSource({
   type: 'mongodb',
   url: process.env.MONGODB_URI || 'mongodb://localhost:27017',
   database: process.env.MONGODB_DATABASE || 'fin_transactions',
-  synchronize: true,
+  // Make synchronization opt-in via TYPEORM_SYNC to avoid automatic schema changes
+  // in non-dev environments. Set TYPEORM_SYNC='true' to enable.
+  synchronize: process.env.TYPEORM_SYNC === 'true',
   logging: process.env.NODE_ENV === 'development',
   entities: [TransactionEntity],
   useUnifiedTopology: true,
@@ -28,9 +30,9 @@ const connectDatabase = async () => {
     return AppDataSource;
   } catch (error) {
     console.error('TypeORM initialization failed:', error);
-    throw error;
   }
-};
+
+  };
 
 const getDataSource = () => {
   if (!isInitialized) {

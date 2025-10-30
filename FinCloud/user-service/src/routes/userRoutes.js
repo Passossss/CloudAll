@@ -176,6 +176,27 @@ router.put('/profile/:id', async (req, res) => {
   }
 });
 
+router.delete('/profile/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRepo = getUserRepository();
+    const profileRepo = getUserProfileRepository();
+
+    const user = await userRepo.findOne({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
+    }
+
+    await userRepo.update({ id }, { isActive: false });
+    await profileRepo.delete({ userId: id });
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error('Delete profile error:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
+  }
+});
+
 router.get('/stats/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -214,4 +235,27 @@ function calculateProfileCompletion(profile) {
   return Math.min(completion, 100);
 }
 
+// Public list users (simple, no auth)
+router.get('/', async (req, res) => {
+  try {
+    const { page = 1, limit = 50 } = req.query;
+    const userRepo = getUserRepository();
+    const take = Math.min(200, parseInt(limit));
+    const skip = (parseInt(page) - 1) * take;
+
+    const [users, total] = await Promise.all([
+      userRepo.find({ take, skip, order: { createdAt: 'DESC' } }),
+      userRepo.count()
+    ]);
+
+    const safe = users.map(u => ({ id: u.id, email: u.email, name: u.name, age: u.age, isActive: u.isActive, createdAt: u.createdAt }));
+
+    res.json({ message: 'Users retrieved', data: { users: safe, pagination: { current: parseInt(page), pages: Math.ceil(total / take), total } } });
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
+  }
+});
+
 module.exports = router;
+

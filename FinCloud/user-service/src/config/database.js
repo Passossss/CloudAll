@@ -12,7 +12,9 @@ const AppDataSource = new DataSource({
   username: process.env.DB_USER || 'sa',
   password: process.env.DB_PASSWORD || 'FinApp123!',
   database: process.env.DB_NAME || 'fin_users_db',
-  synchronize: true,
+  // Disable automatic schema synchronization by default to avoid dangerous DDL
+  // operations against existing databases. Use TYPEORM_SYNC=true in env to enable.
+  synchronize: process.env.TYPEORM_SYNC === 'true',
   logging: process.env.NODE_ENV === 'development',
   entities: [UserEntity, UserProfileEntity],
   options: {
