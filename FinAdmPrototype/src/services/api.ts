@@ -1,155 +1,49 @@
-const API_BASE_URL = 'http://localhost:3000/api';
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 
-interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-  message?: string;
-}
+// Base URL da API - configurável via variável de ambiente
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-interface LoginResponse {
-  token: string;
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-  };
-}
+// Instância do axios configurada
+export const api: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
-class ApiService {
-  private baseURL: string;
-
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
-    try {
-      const url = `${this.baseURL}${endpoint}`;
-      const token = localStorage.getItem('authToken');
-
-      const response = await fetch(url, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token && { Authorization: `Bearer ${token}` }),
-          ...options.headers,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { error: data.error || 'Erro na requisição' };
-      }
-
-      return { data };
-    } catch (error) {
-      console.error('API Error:', error);
-      return { error: 'Erro de conexão com o servidor' };
+// Interceptor para adicionar token de autenticação em todas as requisições
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem('fin_auth_token');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
+);
 
-  // User Service Methods
-  async getAllUsers() {
-    return this.request('/users');
+// Interceptor para tratamento de erros globais
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Se receber 401, limpar token e redirecionar para login
+    if (error.response?.status === 401) {
+      localStorage.removeItem('fin_auth_token');
+      localStorage.removeItem('fin_user');
+      window.location.href = '/login';
+    }
+    
+    // Log de erro para debugging (remover em produção)
+    if (import.meta.env.DEV) {
+      console.error('API Error:', error.response?.data || error.message);
+    }
+    
+    return Promise.reject(error);
   }
+);
 
-  async getUserById(userId: string) {
-    return this.request(`/users/${userId}`);
-  }
-
-  async loginUser(credentials: {
-    email: string;
-    password: string;
-  }): Promise<ApiResponse<LoginResponse>> {
-    return this.request<LoginResponse>('/users/login', {
-      method: 'POST',
-      body: JSON.stringify(credentials),
-    });
-  }
-
-  async createUser(userData: {
-    name: string;
-    email: string;
-    password: string;
-    age?: number;
-    role?: 'normal' | 'admin';
-  }) {
-    return this.request('/users', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  }
-
-  async updateUser(userId: string, updates: any) {
-    return this.request(`/users/${userId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
-  }
-
-  async deleteUser(userId: string) {
-    return this.request(`/users/${userId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  // Transaction Service Methods
-  async getAllTransactions() {
-    return this.request('/transactions');
-  }
-
-  async getTransactionsByUser(userId: string) {
-    return this.request(`/transactions/user/${userId}`);
-  }
-
-  async createTransaction(transactionData: {
-    userId: string;
-    amount: number;
-    description: string;
-    category: string;
-    type: 'income' | 'expense';
-    date: string;
-    tags?: string[];
-    isRecurring?: boolean;
-    recurringPeriod?: string;
-  }) {
-    return this.request('/transactions', {
-      method: 'POST',
-      body: JSON.stringify(transactionData),
-    });
-  }
-
-  async updateTransaction(transactionId: string, updates: any) {
-    return this.request(`/transactions/${transactionId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
-  }
-
-  async deleteTransaction(transactionId: string) {
-    return this.request(`/transactions/${transactionId}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async getTransactionSummary(userId: string) {
-    return this.request(`/transactions/user/${userId}/summary`);
-  }
-
-  async getGlobalSummary() {
-    return this.request('/transactions/summary/global');
-  }
-
-  // Health Check
-  async healthCheck() {
-    return this.request('/health');
-  }
-}
-
-export const apiService = new ApiService();
-export default apiService;
+export default api;

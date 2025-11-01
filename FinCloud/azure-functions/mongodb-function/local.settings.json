@@ -1,0 +1,9 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "MONGODB_URI": "mongodb+srv://fincloud:EWqxoxhEDblokoPd@cluster0.1fl5zhc.mongodb.net/?appName=Cluster0",
+    "MONGODB_DATABASE": "fincloud"
+  }
+}

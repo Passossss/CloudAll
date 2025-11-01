@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 
-// Configurações para cada serviço
 const envConfigs = {
   bff: {
     PORT: '3000',
@@ -29,7 +28,6 @@ const envConfigs = {
   }
 };
 
-// Criar arquivos .env para cada serviço
 Object.entries(envConfigs).forEach(([service, config]) => {
   const envPath = path.join(__dirname, service, '.env');
   const envContent = Object.entries(config)

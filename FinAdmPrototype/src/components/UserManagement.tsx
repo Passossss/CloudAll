@@ -122,7 +122,7 @@ export function UserManagement() {
       </div>
       <div className="flex gap-2 pt-4">
         <Button className="flex-1 bg-orange-500 hover:bg-orange-600">
-          {editingUser ? 'Salvar Alterações' : 'Criar Usuário'}
+          {editingUser ? 'Salvar Alterações' : 'Criar Usuário'}Confirmar
         </Button>
         <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
           Cancelar

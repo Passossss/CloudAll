@@ -1,7 +1,7 @@
 
-  # Admin Dashboard Microfrontend
+  # FinAdmPrototype
 
-  This is a code bundle for Admin Dashboard Microfrontend. The original project is available at https://www.figma.com/design/iSxwGfpIeW7aPjZRnFltmQ/Admin-Dashboard-Microfrontend.
+  This is a code bundle for FinAdmPrototype. The original project is available at https://www.figma.com/design/BZA31WzKBnNBcCGJK0FGIx/FinAdmPrototype.
 
   ## Running the code
 

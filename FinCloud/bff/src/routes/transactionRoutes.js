@@ -34,6 +34,7 @@ const proxyToTransactionService = async (req, res, next) => {
 };
 
 // Rotas de transações
+router.get('/', proxyToTransactionService); // list all transactions (proxied)
 router.post('/', proxyToTransactionService);
 router.get('/user/:userId', proxyToTransactionService);
 router.get('/:id', proxyToTransactionService);

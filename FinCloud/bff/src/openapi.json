@@ -11,9 +11,15 @@
       "description": "Local BFF"
     }
   ],
+  "tags": [
+    { "name": "BFF", "description": "BFF / gateway endpoints (health, proxies)" },
+    { "name": "User", "description": "User service endpoints (register, login, profile)" },
+    { "name": "Transaction", "description": "Transaction service endpoints (create, list, summary, categories)" }
+  ],
   "paths": {
     "/health": {
       "get": {
+        "tags": ["BFF"],
         "summary": "Health check",
         "responses": {
           "200": { "description": "OK" }
@@ -22,6 +28,7 @@
     },
     "/users/register": {
       "post": {
+        "tags": ["User"],
         "summary": "Register a new user (proxied to user-service)",
         "requestBody": {
           "required": true,
@@ -39,6 +46,7 @@
     },
     "/users/login": {
       "post": {
+        "tags": ["User"],
         "summary": "Login user (proxied)",
         "requestBody": {
           "required": true,
@@ -56,31 +64,29 @@
     },
     "/users/profile/{id}": {
       "get": {
+        "tags": ["User"],
         "summary": "Get user profile by id",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": { "200": { "description": "User profile" }, "404": { "description": "Not found" } }
       },
       "put": {
+        "tags": ["User"],
         "summary": "Update user profile",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserUpdate" } } } },
         "responses": { "200": { "description": "Updated" } }
       },
       "delete": {
+        "tags": ["User"],
         "summary": "Delete user profile",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": { "204": { "description": "Deleted" } }
       }
     },
-    "/transactions": {
-      "post": {
-        "summary": "Create a transaction (proxied)",
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TransactionCreate" } } } },
-        "responses": { "201": { "description": "Created" } }
-      }
-    },
+    
     "/transactions/user/{userId}": {
       "get": {
+        "tags": ["Transaction"],
         "summary": "List transactions for a user",
         "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": { "200": { "description": "Array of transactions" } }
@@ -88,17 +94,20 @@
     },
     "/transactions/{id}": {
       "get": {
+        "tags": ["Transaction"],
         "summary": "Get a single transaction",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": { "200": { "description": "Transaction" }, "404": { "description": "Not found" } }
       },
       "put": {
+        "tags": ["Transaction"],
         "summary": "Update a transaction",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "requestBody": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TransactionUpdate" } } } },
         "responses": { "200": { "description": "Updated" } }
       },
       "delete": {
+        "tags": ["Transaction"],
         "summary": "Delete a transaction",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": { "204": { "description": "Deleted" } }
@@ -106,6 +115,7 @@
     },
     "/transactions/user/{userId}/summary": {
       "get": {
+        "tags": ["Transaction"],
         "summary": "Get summary for user",
         "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": { "200": { "description": "Summary object" } }
@@ -113,9 +123,91 @@
     },
     "/transactions/user/{userId}/categories": {
       "get": {
+        "tags": ["Transaction"],
         "summary": "Get categories for user",
         "parameters": [{ "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": { "200": { "description": "Category list" } }
+      }
+    }
+    ,
+    "/users": {
+      "get": {
+        "tags": ["User"],
+        "summary": "List users (public)",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users list",
+            "content": {
+              "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "object",
+                "properties": {
+            "users": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string" },
+                  "email": { "type": "string" },
+                  "name": { "type": "string" }
+                }
+              }
+            },
+            "pagination": { "type": "object" }
+                }
+              },
+              "message": { "type": "string" }
+            }
+          }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions": {
+      "get": {
+        "tags": ["Transaction"],
+        "summary": "List transactions (public)",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } },
+          { "name": "userId", "in": "query", "schema": { "type": "string" } },
+          { "name": "category", "in": "query", "schema": { "type": "string" } },
+          { "name": "type", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Transactions list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "transactions": {
+                          "type": "array",
+                          "items": { "type": "object" }
+                        },
+                        "pagination": { "type": "object" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -141,13 +233,14 @@
         "properties": {
           "userId": { "type": "string" },
           "amount": { "type": "number" },
-          "category": { "type": "string" },
+          "category": { "type": "string", "enum": ["food","transport","entertainment","shopping","bills","health","education","salary","freelance","investment","gift","other"] },
+          "type": { "type": "string", "enum": ["income","expense"] },
           "date": { "type": "string", "format": "date-time" },
           "description": { "type": "string" }
         },
-        "required": ["userId","amount","category","date"]
+        "required": ["userId","amount","category","date","description","type"]
       },
-      "TransactionUpdate": { "type": "object", "properties": { "amount": { "type": "number" }, "category": { "type": "string" } } }
+  "TransactionUpdate": { "type": "object", "properties": { "amount": { "type": "number" }, "category": { "type": "string", "enum": ["food","transport","entertainment","shopping","bills","health","education","salary","freelance","investment","gift","other"] } } }
     }
   }
 }
