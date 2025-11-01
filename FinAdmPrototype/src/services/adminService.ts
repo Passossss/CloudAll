@@ -57,6 +57,20 @@ export interface UpdatePermissionData {
 
 class AdminService {
   // ============================================
+  // Helpers
+  // ============================================
+  
+  private adaptUser(user: any): AdminUser {
+    return {
+      ...user,
+      status: user.isActive ? 'active' : 'inactive',
+      lastLogin: user.lastLogin,
+      transactionCount: user.transactionCount,
+      totalBalance: user.totalBalance,
+    };
+  }
+
+  // ============================================
   // User Management
   // ============================================
 
@@ -94,8 +108,11 @@ class AdminService {
     const usersList = responseData.users || responseData.data || [];
     const paginationData = responseData.pagination || responseData.meta || { page: 1, limit: 20, total: 0 };
     
+    // Adaptar isActive para status
+    const adaptedUsers = usersList.map((user: any) => this.adaptUser(user));
+    
     return {
-      users: usersList,
+      users: adaptedUsers,
       pagination: {
         current: paginationData.current || paginationData.page || 1,
         pages: paginationData.pages || Math.ceil((paginationData.total || 0) / (paginationData.limit || 20)),
@@ -112,7 +129,8 @@ class AdminService {
   async getUserDetails(userId: string): Promise<AdminUser> {
     const response = await api.get(`/users/${userId}`);
     // Adaptar formato de resposta
-    return response.data.user || response.data.data?.user || response.data;
+    const user = response.data.user || response.data.data?.user || response.data;
+    return this.adaptUser(user);
   }
 
   /**
@@ -122,7 +140,8 @@ class AdminService {
   async createUser(data: CreateUserData): Promise<AdminUser> {
     const response = await api.post('/users', data);
     // Adaptar formato de resposta
-    return response.data.user || response.data.data?.user || response.data;
+    const user = response.data.user || response.data.data?.user || response.data;
+    return this.adaptUser(user);
   }
 
   /**
@@ -132,7 +151,8 @@ class AdminService {
   async updateUser(userId: string, data: UpdateUserData): Promise<AdminUser> {
     const response = await api.put(`/users/${userId}`, data);
     // Adaptar formato de resposta
-    return response.data.user || response.data.data?.user || response.data;
+    const user = response.data.user || response.data.data?.user || response.data;
+    return this.adaptUser(user);
   }
 
   /**
@@ -148,10 +168,11 @@ class AdminService {
    * PUT /users/:id/status
    */
   async toggleUserStatus(userId: string, status: 'active' | 'inactive'): Promise<AdminUser> {
-    const response = await api.put<{ user: AdminUser }>(`/users/${userId}/status`, {
+    const response = await api.put(`/users/${userId}/status`, {
       status,
     });
-    return response.data.user;
+    const user = response.data.user || response.data;
+    return this.adaptUser(user);
   }
 
   /**

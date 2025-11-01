@@ -81,7 +81,7 @@ export function useTransactions(filters?: TransactionFilters): UseTransactionsRe
     if (!user) return;
 
     try {
-      const statsData = await transactionService.getStats({ from, to });
+      const statsData = await transactionService.getStats({ from, to }, user.id);
       setStats(statsData.summary);
     } catch (err) {
       console.error('Erro ao carregar estatísticas:', err);
@@ -91,7 +91,10 @@ export function useTransactions(filters?: TransactionFilters): UseTransactionsRe
   const createTransaction = useCallback(async (data: CreateTransactionData) => {
     if (!user) throw new Error('Usuário não autenticado');
 
-    const transaction = await transactionService.create(data);
+    // Adicionar userId aos dados
+    const transactionData = { ...data, userId: user.id };
+
+    const transaction = await transactionService.create(transactionData);
 
     // Recarregar lista após criar
     await loadTransactions();
@@ -154,7 +157,8 @@ export function useTransactions(filters?: TransactionFilters): UseTransactionsRe
 
   useEffect(() => {
     loadTransactions();
-  }, [loadTransactions]);
+    loadStats();
+  }, [loadTransactions, loadStats]);
 
   return {
     transactions,

@@ -29,6 +29,12 @@ module.exports = new EntitySchema({
       type: 'int',
       nullable: true
     },
+    role: {
+      type: 'nvarchar',
+      length: 20,
+      default: 'normal',
+      nullable: false
+    },
     createdAt: {
       type: 'datetime2',
       createDate: true,

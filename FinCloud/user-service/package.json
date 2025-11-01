@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "migrate-and-seed": "node scripts/migrate_and_seed_sql.js",
     "wipe-and-seed": "node scripts/wipe_and_seed_sql.js",
+    "create-admin": "node scripts/create_admin.js",
     "test": "jest"
   },
   "dependencies": {

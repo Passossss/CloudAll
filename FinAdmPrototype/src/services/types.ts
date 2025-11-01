@@ -102,21 +102,21 @@ export interface Category {
 // Transaction Types
 // ============================================
 
-export type TransactionType = 'credit' | 'debit';
+export type TransactionType = 'income' | 'expense';
 
 export interface Transaction {
   id: string;
   userId: string;
-  accountId: string;
-  categoryId: string;
+  category?: string;
   amount: number;
-  currency: string;
   date: string;
   description: string;
   type: TransactionType;
   tags?: string[];
-  createdAt: string;
+  createdAt?: string;
   updatedAt?: string;
+  isRecurring?: boolean;
+  recurringPeriod?: string;
 }
 
 // ============================================

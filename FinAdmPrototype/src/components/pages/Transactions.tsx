@@ -8,73 +8,119 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, Edit, Trash2, Calendar } from 'lucide-react';
+import { Plus, Search, Filter, ArrowUpRight, ArrowDownRight, Edit, Trash2, Calendar, Loader2 } from 'lucide-react';
+import { useTransactions } from '../../hooks/useTransactions';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'sonner';
 
-interface Transaction {
-  id: number;
-  description: string;
-  amount: number;
-  category: string;
-  date: string;
-  type: 'income' | 'expense';
-  account?: string;
-}
-
-const initialTransactions: Transaction[] = [
-  { id: 1, description: 'Salário - Empresa XYZ', amount: 4500.00, category: 'Salário', date: '2024-12-05', type: 'income', account: 'Conta Corrente' },
-  { id: 2, description: 'Freelance - Projeto Web', amount: 800.00, category: 'Trabalho', date: '2024-12-06', type: 'income', account: 'Conta Corrente' },
-  { id: 3, description: 'Netflix', amount: -45.90, category: 'Lazer', date: '2024-12-07', type: 'expense', account: 'Cartão de Crédito' },
-  { id: 4, description: 'Uber', amount: -32.00, category: 'Transporte', date: '2024-12-08', type: 'expense', account: 'Conta Corrente' },
-  { id: 5, description: 'Supermercado Extra', amount: -185.50, category: 'Alimentação', date: '2024-12-09', type: 'expense', account: 'Cartão de Débito' },
-  { id: 6, description: 'Farmácia Drogasil', amount: -67.80, category: 'Saúde', date: '2024-12-09', type: 'expense', account: 'Conta Corrente' },
-  { id: 7, description: 'Dividendos - Ações', amount: 150.00, category: 'Investimentos', date: '2024-12-10', type: 'income', account: 'Conta Investimentos' },
-  { id: 8, description: 'Conta de Luz', amount: -89.30, category: 'Casa', date: '2024-12-10', type: 'expense', account: 'Conta Corrente' },
-];
-
-const categories = ['Salário', 'Trabalho', 'Lazer', 'Transporte', 'Alimentação', 'Saúde', 'Investimentos', 'Casa', 'Educação', 'Outros'];
-const accounts = ['Conta Corrente', 'Conta Poupança', 'Cartão de Crédito', 'Cartão de Débito', 'Conta Investimentos'];
+const categories = ['food', 'transport', 'entertainment', 'shopping', 'bills', 'health', 'education', 'salary', 'freelance', 'investment', 'gift', 'other'];
+const categoryLabels: Record<string, string> = {
+  'food': 'Alimentação',
+  'transport': 'Transporte',
+  'entertainment': 'Lazer',
+  'shopping': 'Compras',
+  'bills': 'Contas',
+  'health': 'Saúde',
+  'education': 'Educação',
+  'salary': 'Salário',
+  'freelance': 'Freelance',
+  'investment': 'Investimentos',
+  'gift': 'Presente',
+  'other': 'Outros'
+};
 
 export function Transactions() {
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const { user } = useAuth();
+  const { transactions, loading, createTransaction, updateTransaction, deleteTransaction, stats } = useTransactions();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [formLoading, setFormLoading] = useState(false);
+  
+  // Form state
+  const [formType, setFormType] = useState<'income' | 'expense'>('expense');
+  const [formCategory, setFormCategory] = useState('');
 
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
+                         (transaction.category && transaction.category.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = filterCategory === 'all' || transaction.category === filterCategory;
     const matchesType = filterType === 'all' || transaction.type === filterType;
     
     return matchesSearch && matchesCategory && matchesType;
   });
 
-  const handleDeleteTransaction = (id: number) => {
-    setTransactions(transactions.filter(t => t.id !== id));
-  };
-
-  const handleEditTransaction = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
-    setIsDialogOpen(true);
+  const handleDeleteTransaction = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta transação?')) {
+      try {
+        await deleteTransaction(id);
+        toast.success('Transação excluída com sucesso');
+      } catch (error) {
+        toast.error('Erro ao excluir transação');
+      }
+    }
   };
 
   const handleAddTransaction = () => {
     setEditingTransaction(null);
+    setFormType('expense');
+    setFormCategory('');
+    setIsDialogOpen(true);
+  };
+  
+  const handleEditTransaction = (transaction: any) => {
+    setEditingTransaction(transaction);
+    setFormType(transaction.type);
+    setFormCategory(transaction.category || '');
     setIsDialogOpen(true);
   };
 
-  const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-  const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const totalIncome = stats?.income || 0;
+  const totalExpenses = Math.abs(stats?.expenses || 0);
   const balance = totalIncome - totalExpenses;
 
+  const handleSaveTransaction = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setFormLoading(true);
+
+    try {
+      const formData = new FormData(e.currentTarget);
+      const transactionData = {
+        category: formCategory,
+        amount: parseFloat(formData.get('amount') as string),
+        description: formData.get('description') as string,
+        type: formType,
+        date: formData.get('date') as string || new Date().toISOString().split('T')[0],
+      };
+
+      if (editingTransaction) {
+        await updateTransaction(editingTransaction.id, transactionData);
+        toast.success('Transação atualizada com sucesso');
+      } else {
+        await createTransaction(transactionData);
+        toast.success('Transação criada com sucesso');
+      }
+      
+      setIsDialogOpen(false);
+      setEditingTransaction(null);
+      setFormCategory('');
+      setFormType('expense');
+    } catch (error: any) {
+      console.error('Erro ao salvar transação:', error);
+      toast.error(error.message || 'Erro ao salvar transação');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   const TransactionForm = () => (
-    <div className="space-y-4">
+    <form onSubmit={handleSaveTransaction} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="type">Tipo</Label>
-          <Select defaultValue={editingTransaction?.type || 'expense'}>
+          <Select value={formType} onValueChange={(v) => setFormType(v as 'income' | 'expense')}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o tipo" />
             </SelectTrigger>
@@ -88,9 +134,11 @@ export function Transactions() {
           <Label htmlFor="amount">Valor</Label>
           <Input 
             id="amount" 
+            name="amount"
             type="number" 
             step="0.01"
-            placeholder="0,00" 
+            placeholder="0,00"
+            required
             defaultValue={editingTransaction?.amount ? Math.abs(editingTransaction.amount) : ''}
           />
         </div>
@@ -100,59 +148,72 @@ export function Transactions() {
         <Label htmlFor="description">Descrição</Label>
         <Input 
           id="description" 
-          placeholder="Ex: Supermercado, Salário, etc." 
+          name="description"
+          placeholder="Ex: Supermercado, Salário, etc."
+          required
           defaultValue={editingTransaction?.description}
         />
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="category">Categoria</Label>
-          <Select defaultValue={editingTransaction?.category || ''}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione uma categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="account">Conta</Label>
-          <Select defaultValue={editingTransaction?.account || ''}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione uma conta" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map(account => (
-                <SelectItem key={account} value={account}>{account}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="category">Categoria</Label>
+        <Select value={formCategory} onValueChange={setFormCategory}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecione uma categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map(category => (
+              <SelectItem key={category} value={category}>{categoryLabels[category]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div className="space-y-2">
         <Label htmlFor="date">Data</Label>
         <Input 
           id="date" 
-          type="date" 
-          defaultValue={editingTransaction?.date}
+          name="date"
+          type="date"
+          defaultValue={editingTransaction?.date || new Date().toISOString().split('T')[0]}
         />
       </div>
       
       <div className="flex gap-2 pt-4">
-        <Button className="flex-1 bg-primary hover:bg-primary/90">
-          {editingTransaction ? 'Salvar Alterações' : 'Adicionar Transação'}
+        <Button type="submit" disabled={formLoading || !formCategory} className="flex-1 bg-primary hover:bg-primary/90">
+          {formLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Salvando...
+            </>
+          ) : (
+            editingTransaction ? 'Salvar Alterações' : 'Adicionar Transação'
+          )}
         </Button>
-        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
+        <Button 
+          type="button"
+          variant="outline" 
+          onClick={() => {
+            setIsDialogOpen(false);
+            setEditingTransaction(null);
+            setFormCategory('');
+            setFormType('expense');
+          }} 
+          className="flex-1"
+        >
           Cancelar
         </Button>
       </div>
-    </div>
+    </form>
   );
+
+  if (loading && transactions.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -250,7 +311,7 @@ export function Transactions() {
               <SelectContent>
                 <SelectItem value="all">Todas as categorias</SelectItem>
                 {categories.map(category => (
-                  <SelectItem key={category} value={category}>{category}</SelectItem>
+                  <SelectItem key={category} value={category}>{categoryLabels[category]}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -287,7 +348,6 @@ export function Transactions() {
                 <TableRow>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Categoria</TableHead>
-                  <TableHead>Conta</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -311,9 +371,8 @@ export function Transactions() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{transaction.category}</Badge>
+                      <Badge variant="secondary">{transaction.category ? categoryLabels[transaction.category] || transaction.category : '-'}</Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{transaction.account}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(transaction.date).toLocaleDateString('pt-BR')}
                     </TableCell>

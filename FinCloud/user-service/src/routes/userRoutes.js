@@ -10,7 +10,8 @@ const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
   name: Joi.string().min(2).required(),
-  age: Joi.number().integer().min(13).max(120).optional()
+  age: Joi.number().integer().min(13).max(120).optional(),
+  role: Joi.string().valid('normal', 'admin').optional()
 });
 
 const loginSchema = Joi.object({
@@ -25,7 +26,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Validation error', details: error.details });
     }
 
-    const { email, password, name, age } = value;
+    const { email, password, name, age, role } = value;
     const userRepo = getUserRepository();
     const profileRepo = getUserProfileRepository();
 
@@ -41,6 +42,7 @@ router.post('/register', async (req, res) => {
       password: hashedPassword,
       name,
       age: age || null,
+      role: role || 'normal',
       isActive: true
     });
     
@@ -61,7 +63,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       message: 'User created successfully',
-      user: { id: user.id, email: user.email, name: user.name, age: user.age },
+      user: { id: user.id, email: user.email, name: user.name, age: user.age, role: user.role },
       token
     });
   } catch (error) {
@@ -102,7 +104,7 @@ router.post('/login', async (req, res) => {
 
     res.json({
       message: 'Login successful',
-      user: { id: user.id, email: user.email, name: user.name, age: user.age },
+      user: { id: user.id, email: user.email, name: user.name, age: user.age, role: user.role },
       token
     });
   } catch (error) {
@@ -248,11 +250,175 @@ router.get('/', async (req, res) => {
       userRepo.count()
     ]);
 
-    const safe = users.map(u => ({ id: u.id, email: u.email, name: u.name, age: u.age, isActive: u.isActive, createdAt: u.createdAt }));
+    const safe = users.map(u => ({ id: u.id, email: u.email, name: u.name, age: u.age, role: u.role, isActive: u.isActive, createdAt: u.createdAt }));
 
     res.json({ message: 'Users retrieved', data: { users: safe, pagination: { current: parseInt(page), pages: Math.ceil(total / take), total } } });
   } catch (error) {
     console.error('List users error:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
+  }
+});
+
+// Admin routes - Get user by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRepo = getUserRepository();
+    const user = await userRepo.findOne({ where: { id } });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
+    }
+
+    const safe = { id: user.id, email: user.email, name: user.name, age: user.age, role: user.role, isActive: user.isActive, createdAt: user.createdAt };
+    res.json({ message: 'User retrieved', user: safe });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
+  }
+});
+
+// Admin routes - Create user (admin only via BFF)
+router.post('/', async (req, res) => {
+  try {
+    const { error, value } = registerSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: 'Validation error', details: error.details });
+    }
+
+    const { email, password, name, age, role } = value;
+    const userRepo = getUserRepository();
+    const profileRepo = getUserProfileRepository();
+
+    const existingUser = await userRepo.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({ error: 'User already exists', message: 'Usuário já cadastrado com este email' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const user = userRepo.create({
+      email,
+      password: hashedPassword,
+      name,
+      age: age || null,
+      role: role || 'normal',
+      isActive: true
+    });
+    
+    await userRepo.save(user);
+
+    const profile = profileRepo.create({
+      userId: user.id,
+      monthlyIncome: 0,
+      spendingLimit: 0
+    });
+    await profileRepo.save(profile);
+
+    const safe = { id: user.id, email: user.email, name: user.name, age: user.age, role: user.role, isActive: user.isActive, createdAt: user.createdAt };
+    res.status(201).json({
+      message: 'User created successfully',
+      user: safe
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
+  }
+});
+
+// Admin routes - Update user
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, age, role } = req.body;
+    const userRepo = getUserRepository();
+
+    const user = await userRepo.findOne({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
+    }
+
+    if (name || email || age !== undefined || role) {
+      await userRepo.update({ id }, {
+        ...(name && { name }),
+        ...(email && { email }),
+        ...(age !== undefined && { age }),
+        ...(role && { role })
+      });
+    }
+
+    const updatedUser = await userRepo.findOne({ where: { id } });
+    const safe = { id: updatedUser.id, email: updatedUser.email, name: updatedUser.name, age: updatedUser.age, role: updatedUser.role, isActive: updatedUser.isActive, createdAt: updatedUser.createdAt };
+    res.json({ message: 'User updated successfully', user: safe });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
+  }
+});
+
+// Admin routes - Delete user (soft delete)
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRepo = getUserRepository();
+    const profileRepo = getUserProfileRepository();
+
+    const user = await userRepo.findOne({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
+    }
+
+    await userRepo.update({ id }, { isActive: false });
+    await profileRepo.delete({ userId: id });
+
+    return res.status(204).send();
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
+  }
+});
+
+// Admin routes - Toggle user status
+router.put('/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userRepo = getUserRepository();
+
+    const user = await userRepo.findOne({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
+    }
+
+    await userRepo.update({ id }, { isActive: status === 'active' });
+
+    const updatedUser = await userRepo.findOne({ where: { id } });
+    const safe = { id: updatedUser.id, email: updatedUser.email, name: updatedUser.name, age: updatedUser.age, role: updatedUser.role, isActive: updatedUser.isActive, createdAt: updatedUser.createdAt };
+    res.json({ message: 'User status updated', user: safe });
+  } catch (error) {
+    console.error('Update status error:', error);
+    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
+  }
+});
+
+// Admin routes - Reset user password
+router.post('/:id/reset-password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+    const userRepo = getUserRepository();
+
+    const user = await userRepo.findOne({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await userRepo.update({ id }, { password: hashedPassword });
+
+    res.json({ message: 'Password reset successfully', message_pt: 'Senha alterada com sucesso' });
+  } catch (error) {
+    console.error('Reset password error:', error);
     res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
 });

@@ -77,11 +77,9 @@ export function FinSidebar({ currentPage, onPageChange, isCollapsed, onToggleCol
                 {isAdminItem && <Shield className="w-3 h-3 text-primary" />}
               </span>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <div
                   className={cn(
-                    "h-6 w-6 p-0 hover:bg-transparent",
+                    "h-6 w-6 p-0 cursor-pointer flex items-center justify-center rounded hover:bg-transparent",
                     isAdminItem && "text-primary hover:text-primary/80"
                   )}
                   onClick={(e) => {
@@ -94,7 +92,7 @@ export function FinSidebar({ currentPage, onPageChange, isCollapsed, onToggleCol
                   ) : (
                     <Pin className="w-3 h-3" />
                   )}
-                </Button>
+                </div>
                 <GripVertical className={cn(
                   "w-3 h-3",
                   isAdminItem ? "text-primary/60" : "text-muted-foreground"

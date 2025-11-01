@@ -6,33 +6,37 @@ import type { Transaction, TransactionType, PaginatedResponse } from './types';
 // ============================================
 
 export interface CreateTransactionData {
-  accountId: string;
-  categoryId: string;
+  userId: string;
+  category: string;
   amount: number;
-  currency: string;
-  date: string;
   description: string;
   type: TransactionType;
+  date?: string;
   tags?: string[];
+  isRecurring?: boolean;
+  recurringPeriod?: string;
 }
 
 export interface UpdateTransactionData {
-  accountId?: string;
-  categoryId?: string;
+  userId?: string;
+  category?: string;
   amount?: number;
-  currency?: string;
-  date?: string;
   description?: string;
   type?: TransactionType;
+  date?: string;
   tags?: string[];
+  isRecurring?: boolean;
+  recurringPeriod?: string;
 }
 
 export interface TransactionFilters {
-  accountId?: string;
-  categoryId?: string;
+  userId?: string;
+  category?: string;
   type?: TransactionType | 'all';
   from?: string;
   to?: string;
+  startDate?: string;
+  endDate?: string;
   search?: string;
   sort?: string;
   page?: number;
@@ -87,11 +91,11 @@ class TransactionService {
   async list(filters?: TransactionFilters): Promise<TransactionListResponse> {
     const params = new URLSearchParams();
     
-    if (filters?.accountId) {
-      params.append('accountId', filters.accountId);
+    if (filters?.userId) {
+      params.append('userId', filters.userId);
     }
-    if (filters?.categoryId) {
-      params.append('categoryId', filters.categoryId);
+    if (filters?.category) {
+      params.append('category', filters.category);
     }
     if (filters?.type && filters.type !== 'all') {
       params.append('type', filters.type);
@@ -101,6 +105,12 @@ class TransactionService {
     }
     if (filters?.to) {
       params.append('to', filters.to);
+    }
+    if (filters?.startDate) {
+      params.append('startDate', filters.startDate);
+    }
+    if (filters?.endDate) {
+      params.append('endDate', filters.endDate);
     }
     if (filters?.search) {
       params.append('q', filters.search);
@@ -177,9 +187,15 @@ class TransactionService {
 
   /**
    * Obtém estatísticas de transações
-   * GET /transactions/stats
+   * GET /transactions/user/:userId/summary
    */
-  async getStats(filters?: Pick<TransactionFilters, 'from' | 'to' | 'accountId'>): Promise<TransactionStats> {
+  async getStats(filters?: Pick<TransactionFilters, 'from' | 'to'>, userId?: string): Promise<TransactionStats> {
+    // Se não tiver userId, buscar do usuário autenticado
+    const currentUserId = userId;
+    if (!currentUserId) {
+      throw new Error('UserId é obrigatório para buscar estatísticas');
+    }
+    
     const params = new URLSearchParams();
     
     if (filters?.from) {
@@ -188,15 +204,25 @@ class TransactionService {
     if (filters?.to) {
       params.append('to', filters.to);
     }
-    if (filters?.accountId) {
-      params.append('accountId', filters.accountId);
-    }
 
     const queryString = params.toString();
-    const url = `/transactions/stats${queryString ? `?${queryString}` : ''}`;
+    const url = `/transactions/user/${currentUserId}/summary${queryString ? `?${queryString}` : ''}`;
     
-    const response = await api.get<{ stats: TransactionStats }>(url);
-    return response.data.stats;
+    const response = await api.get(url);
+    // Formato de resposta: { period, summary: { income, expenses, balance, total_transactions }, categories }
+    const summary = response.data.summary;
+    
+    // Adaptar para formato esperado pelo TransactionStats
+    return {
+      summary: {
+        income: summary.income || 0,
+        expenses: Math.abs(summary.expenses || 0),
+        balance: summary.balance || 0,
+        count: summary.total_transactions || 0,
+      },
+      byCategory: response.data.categories || [],
+      byAccount: [],
+    };
   }
 
   /**

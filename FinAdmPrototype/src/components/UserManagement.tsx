@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -10,11 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Edit, Trash2, Plus, Search, Loader2 } from 'lucide-react';
 import { useAdminUsers } from '../hooks/useAdminUsers';
 import type { AdminUser } from '../services/types';
+import { toast } from 'sonner';
 
 export function UserManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [formRole, setFormRole] = useState<string>('normal');
+  const [formStatus, setFormStatus] = useState<string>('active');
   
   const { 
     users, 
@@ -36,20 +39,25 @@ export function UserManagement() {
     if (confirm('Tem certeza que deseja excluir este usuário?')) {
       try {
         await deleteUser(id);
+        toast.success('Usuário excluído com sucesso');
       } catch (error) {
         console.error('Erro ao excluir usuário:', error);
-        alert('Erro ao excluir usuário. Tente novamente.');
+        toast.error('Erro ao excluir usuário');
       }
     }
   };
 
   const handleEditUser = (user: AdminUser) => {
     setEditingUser(user);
+    setFormRole(user.role);
+    setFormStatus(user.status);
     setIsDialogOpen(true);
   };
 
   const handleAddUser = () => {
     setEditingUser(null);
+    setFormRole('normal');
+    setFormStatus('active');
     setIsDialogOpen(true);
   };
 
@@ -61,34 +69,35 @@ export function UserManagement() {
       const userData = {
         name: formData.get('name') as string,
         email: formData.get('email') as string,
-        phone: formData.get('phone') as string,
-        role: (formData.get('role') as 'normal' | 'admin') || 'normal',
-        occupation: formData.get('occupation') as string,
+        role: (formRole as 'normal' | 'admin') || 'normal',
       };
 
       if (editingUser) {
         await updateUser(editingUser.id, userData);
+        // Se mudou o status, também atualizar
+        if (formStatus !== (editingUser.status === 'active' ? 'active' : 'inactive')) {
+          await toggleUserStatus(editingUser.id, formStatus as 'active' | 'inactive');
+        }
+        toast.success('Usuário atualizado com sucesso');
       } else {
         const password = formData.get('password') as string;
-        if (!password) {
-          alert('Senha é obrigatória para novos usuários');
+        if (!password || password.length < 6) {
+          toast.error('Senha é obrigatória e deve ter no mínimo 6 caracteres');
           return;
         }
         await createUser({ ...userData, password });
+        toast.success('Usuário criado com sucesso');
       }
       
       setIsDialogOpen(false);
       setEditingUser(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao salvar usuário:', error);
-      alert('Erro ao salvar usuário. Tente novamente.');
+      toast.error(error.message || 'Erro ao salvar usuário');
     }
   };
 
   const UserForm = () => {
-    const [formRole, setFormRole] = useState<string>(editingUser?.role === 'admin' ? 'admin' : 'normal');
-    const [formStatus, setFormStatus] = useState<string>(editingUser?.status === 'active' ? 'active' : 'inactive');
-    
     return (
       <form onSubmit={handleSaveUser} className="space-y-4">
         <div className="space-y-2">
@@ -106,16 +115,8 @@ export function UserManagement() {
           </div>
         )}
         <div className="space-y-2">
-          <Label htmlFor="phone">Telefone</Label>
-          <Input id="phone" name="phone" placeholder="(11) 99999-9999" defaultValue={editingUser?.phone} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="occupation">Ocupação</Label>
-          <Input id="occupation" name="occupation" placeholder="Profissão" defaultValue={editingUser?.occupation} />
-        </div>
-        <div className="space-y-2">
           <Label htmlFor="role">Tipo</Label>
-          <Select name="role" value={formRole} onValueChange={setFormRole}>
+          <Select value={formRole} onValueChange={setFormRole}>
             <SelectTrigger>
               <SelectValue placeholder="Selecione o tipo" />
             </SelectTrigger>
@@ -128,7 +129,7 @@ export function UserManagement() {
         {editingUser && (
           <div className="space-y-2">
             <Label htmlFor="status">Status</Label>
-            <Select name="status" value={formStatus} onValueChange={setFormStatus}>
+            <Select value={formStatus} onValueChange={setFormStatus}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o status" />
               </SelectTrigger>
@@ -213,8 +214,6 @@ export function UserManagement() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>E-mail</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    <TableHead>Ocupação</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Data Criação</TableHead>
@@ -224,7 +223,7 @@ export function UserManagement() {
                 <TableBody>
                   {filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-gray-500 py-8">
+                      <TableCell colSpan={6} className="text-center text-gray-500 py-8">
                         Nenhum usuário encontrado
                       </TableCell>
                     </TableRow>
@@ -233,8 +232,6 @@ export function UserManagement() {
                       <TableRow key={user.id}>
                         <TableCell className="font-medium">{user.name || 'N/A'}</TableCell>
                         <TableCell className="text-gray-600">{user.email || 'N/A'}</TableCell>
-                        <TableCell className="text-gray-600">{user.phone || 'N/A'}</TableCell>
-                        <TableCell className="text-gray-600">{user.occupation || 'N/A'}</TableCell>
                         <TableCell>
                           <Badge 
                             variant={user.status === 'active' ? 'default' : 'secondary'}
