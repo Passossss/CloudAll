@@ -4,8 +4,8 @@ import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Input } from "./ui/input";
 import { useUser } from "../contexts/UserContext";
-import finLogo from "../assets/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
-import userPhoto from "../assets/a782661ee70c59f23a38d1d1770684fad77db575.png";
+import finLogo from "figma:asset/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
+import userPhoto from "figma:asset/a782661ee70c59f23a38d1d1770684fad77db575.png";
 
 interface HeaderProps {
   isDark: boolean;
@@ -28,7 +28,7 @@ export function Header({ isDark, onThemeToggle, isSidebarCollapsed, onSidebarTog
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { isAdmin } = useUser();
+  const { isAdmin, user, logout } = useUser();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -126,8 +126,12 @@ export function Header({ isDark, onThemeToggle, isSidebarCollapsed, onSidebarTog
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="font-medium text-gray-900 dark:text-gray-100">Gustavo Passos</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">gustavo@email.com</div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                    {user?.name || 'Usuário'}
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {user?.email || 'email@exemplo.com'}
+                  </div>
                 </div>
               </div>
               
@@ -180,7 +184,11 @@ export function Header({ isDark, onThemeToggle, isSidebarCollapsed, onSidebarTog
               <div className="border-t border-gray-200 dark:border-gray-600 my-1"></div>
               
               <button
-                onClick={() => setIsDropdownOpen(false)}
+                onClick={() => {
+                  logout();
+                  setIsDropdownOpen(false);
+                  onPageChange('login');
+                }}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 dark:hover:bg-red-950/20 flex items-center text-red-600 dark:text-red-400"
               >
                 <LogOut className="h-4 w-4 mr-2" />

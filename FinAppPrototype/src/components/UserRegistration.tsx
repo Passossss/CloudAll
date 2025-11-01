@@ -4,9 +4,13 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription, DialogFooter, DialogHeader } from "./ui/dialog";
+import { useUser } from "../contexts/UserContext";
+import { useEffect } from 'react';
+import { userApi, getErrorMessage, User } from "../services/api";
 
-export function UserRegistration() {
+export function UserRegistration({ onSubmit }: { onSubmit: (user: User) => void }) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -18,19 +22,99 @@ export function UserRegistration() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Usuário cadastrado com sucesso!");
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      age: "",
-      income: "",
-      occupation: ""
-    });
+    (async () => {
+      try {
+        const ageNum = formData.age ? parseInt(formData.age, 10) : undefined;
+        await register({
+          email: formData.email,
+          password: 'Passw0rd!', // default password for created users via UI
+          name: formData.name,
+          age: ageNum,
+        });
+
+        toast.success('Usuário cadastrado com sucesso!');
+        setFormData({ name: '', email: '', phone: '', age: '', income: '', occupation: '' });
+        onSubmit({
+          ...formData,
+          id: '',
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          age: parseInt(formData.age, 10),
+        });
+      } catch (err) {
+        // error handled by auth hook
+      }
+    })();
   };
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const { register } = useUser();
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ name: '', email: '' });
+  const [editErrors, setEditErrors] = useState({} as any);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const resp = await userApi.listUsers();
+        const list = resp.data?.users || resp.users || resp;
+        if (mounted) setUsers(list || []);
+      } catch (err) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false };
+  }, []);
+
+  const openEdit = (u: any) => {
+    setEditingUser(u);
+    setEditForm({ name: u.name || '', email: u.email || '' });
+    setEditErrors({});
+    setIsEditOpen(true);
+  };
+
+  const validateEdit = () => {
+    const e: any = {};
+    if (!editForm.name || editForm.name.trim().length < 2) e.name = 'Nome inválido';
+    if (!editForm.email || !/^[\w-.]+@[\w-]+\.[a-z]{2,}$/i.test(editForm.email)) e.email = 'E-mail inválido';
+    setEditErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return;
+    if (!validateEdit()) return;
+    try {
+      await userApi.updateUser(editingUser.id, { name: editForm.name, email: editForm.email });
+      const resp = await userApi.listUsers();
+      const list = resp.data?.users || resp.users || resp;
+      setUsers(list || []);
+      setIsEditOpen(false);
+      toast.success('Usuário atualizado');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const handleDeleteUser = async (u: any) => {
+    try {
+      await userApi.deleteUser(u.id);
+      const resp = await userApi.listUsers();
+      const list = resp.data?.users || resp.users || resp;
+      setUsers(list || []);
+      toast.success('Usuário removido');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
   };
 
   return (
@@ -86,7 +170,7 @@ export function UserRegistration() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="age">Idade</Label>
-                <Select onValueChange={(value) => handleChange("age", value)}>
+                <Select onValueChange={(value: string) => handleChange("age", value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a idade" />
                   </SelectTrigger>
@@ -133,6 +217,80 @@ export function UserRegistration() {
           </form>
         </CardContent>
       </Card>
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle>Usuários Cadastrados</CardTitle>
+          <CardDescription>Edite ou remova usuários</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {users.length === 0 ? (
+            <div className="text-sm text-gray-500">Nenhum usuário encontrado</div>
+          ) : (
+            <div className="space-y-2">
+              {users.map((u: any) => (
+                <div key={u.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                  <div>
+                    <p className="font-medium">{u.name || u.email}</p>
+                    <p className="text-xs text-gray-600">{u.email}</p>
+                  </div>
+                    <div className="flex items-center gap-3">
+                      <button className="text-sm text-blue-600 hover:underline" onClick={() => openEdit(u)}>Edit</button>
+                      <button className="text-sm text-red-600 hover:underline" onClick={() => { setEditingUser(u); setIsDeleteOpen(true); }}>Delete</button>
+                    </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+        
+        {/* Edit Dialog */}
+        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Usuário</DialogTitle>
+              <DialogDescription>Atualize os dados do usuário</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 mt-4">
+              <div>
+                <label className="text-sm">Nome</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((s) => ({ ...s, name: e.target.value }))}
+                  className="w-full border rounded px-2 py-1 mt-1"
+                />
+                {editErrors.name && <div className="text-xs text-red-600">{editErrors.name}</div>}
+              </div>
+              <div>
+                <label className="text-sm">E-mail</label>
+                <input
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((s) => ({ ...s, email: e.target.value }))}
+                  className="w-full border rounded px-2 py-1 mt-1"
+                />
+                {editErrors.email && <div className="text-xs text-red-600">{editErrors.email}</div>}
+              </div>
+            </div>
+            <DialogFooter>
+              <div className="flex gap-2">
+                <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setIsEditOpen(false)}>Cancelar</button>
+                <button className="px-3 py-1 bg-blue-600 text-white rounded" onClick={handleSaveEdit}>Salvar</button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+          <DialogContent>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>Tem certeza que deseja excluir este usuário?</DialogDescription>
+            <div className="mt-4 flex gap-2">
+              <button className="px-3 py-1 bg-gray-200 rounded" onClick={() => setIsDeleteOpen(false)}>Cancelar</button>
+              <button className="px-3 py-1 bg-red-600 text-white rounded" onClick={async () => { if (editingUser) await handleDeleteUser(editingUser); setIsDeleteOpen(false); }}>Excluir</button>
+            </div>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }

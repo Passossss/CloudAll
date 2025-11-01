@@ -1,24 +1,34 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   categoryService,
-  Category,
   CreateCategoryData,
   UpdateCategoryData,
-  CategoryType,
-} from '../services/categoryService';
+  CategoryFilters,
+} from '../services';
+import type { Category, CategoryType } from '../services/types';
 import { useAuth } from '../components/contexts/AuthContext';
+
+// ============================================
+// Types
+// ============================================
 
 export interface UseCategoriesResult {
   categories: Category[];
   loading: boolean;
   error: Error | null;
-  createCategory: (data: Omit<CreateCategoryData, 'userId'>) => Promise<Category>;
+  createCategory: (data: CreateCategoryData) => Promise<Category>;
   updateCategory: (id: string, data: UpdateCategoryData) => Promise<Category>;
   deleteCategory: (id: string) => Promise<void>;
+  reorderCategories: (categoryIds: string[]) => Promise<void>;
+  importDefaults: () => Promise<void>;
   refreshCategories: () => Promise<void>;
 }
 
-export function useCategories(type?: CategoryType | 'all'): UseCategoriesResult {
+// ============================================
+// Hook
+// ============================================
+
+export function useCategories(filters?: CategoryFilters): UseCategoriesResult {
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +44,7 @@ export function useCategories(type?: CategoryType | 'all'): UseCategoriesResult 
     setError(null);
 
     try {
-      const categoriesData = await categoryService.list(user.id, type);
+      const categoriesData = await categoryService.list(filters);
       setCategories(categoriesData);
     } catch (err) {
       setError(err as Error);
@@ -42,15 +52,12 @@ export function useCategories(type?: CategoryType | 'all'): UseCategoriesResult 
     } finally {
       setLoading(false);
     }
-  }, [user, type]);
+  }, [user, filters]);
 
-  const createCategory = useCallback(async (data: Omit<CreateCategoryData, 'userId'>) => {
+  const createCategory = useCallback(async (data: CreateCategoryData) => {
     if (!user) throw new Error('Usuário não autenticado');
 
-    const category = await categoryService.create({
-      ...data,
-      userId: user.id,
-    });
+    const category = await categoryService.create(data);
 
     // Recarregar lista após criar
     await loadCategories();
@@ -74,6 +81,22 @@ export function useCategories(type?: CategoryType | 'all'): UseCategoriesResult 
     await loadCategories();
   }, [loadCategories]);
 
+  const reorderCategories = useCallback(async (categoryIds: string[]) => {
+    await categoryService.reorder(categoryIds);
+
+    // Recarregar lista após reordenar
+    await loadCategories();
+  }, [loadCategories]);
+
+  const importDefaults = useCallback(async () => {
+    if (!user) throw new Error('Usuário não autenticado');
+
+    await categoryService.importDefaults();
+
+    // Recarregar lista após importar
+    await loadCategories();
+  }, [user, loadCategories]);
+
   const refreshCategories = useCallback(async () => {
     await loadCategories();
   }, [loadCategories]);
@@ -89,6 +112,8 @@ export function useCategories(type?: CategoryType | 'all'): UseCategoriesResult 
     createCategory,
     updateCategory,
     deleteCategory,
+    reorderCategories,
+    importDefaults,
     refreshCategories,
   };
 }

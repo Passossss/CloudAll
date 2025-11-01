@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   adminService,
-  AdminUser,
   CreateUserData,
   UpdateUserData,
   UserFilters,
-  SystemStats,
-} from '../services/adminService';
+} from '../services';
+import type { AdminUser, SystemStats } from '../services/types';
+
+// ============================================
+// Types
+// ============================================
 
 export interface UseAdminUsersResult {
   users: AdminUser[];
@@ -23,9 +26,15 @@ export interface UseAdminUsersResult {
   updateUser: (id: string, data: UpdateUserData) => Promise<AdminUser>;
   deleteUser: (id: string) => Promise<void>;
   toggleUserStatus: (id: string, status: 'active' | 'inactive') => Promise<AdminUser>;
+  resetPassword: (id: string, newPassword: string) => Promise<void>;
   refreshUsers: () => Promise<void>;
   loadStats: () => Promise<void>;
+  exportUsers: () => Promise<void>;
 }
+
+// ============================================
+// Hook
+// ============================================
 
 export function useAdminUsers(filters?: UserFilters): UseAdminUsersResult {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -100,10 +109,33 @@ export function useAdminUsers(filters?: UserFilters): UseAdminUsersResult {
     return user;
   }, [loadUsers]);
 
+  const resetPassword = useCallback(async (id: string, newPassword: string) => {
+    await adminService.resetUserPassword(id, newPassword);
+  }, []);
+
   const refreshUsers = useCallback(async () => {
     await loadUsers();
     await loadStats();
   }, [loadUsers, loadStats]);
+
+  const exportUsers = useCallback(async () => {
+    try {
+      const blob = await adminService.exportUsers(filters);
+      
+      // Criar URL temporário e fazer download
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `usuarios_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erro ao exportar usuários:', err);
+      throw err;
+    }
+  }, [filters]);
 
   useEffect(() => {
     loadUsers();
@@ -119,7 +151,9 @@ export function useAdminUsers(filters?: UserFilters): UseAdminUsersResult {
     updateUser,
     deleteUser,
     toggleUserStatus,
+    resetPassword,
     refreshUsers,
     loadStats,
+    exportUsers,
   };
 }

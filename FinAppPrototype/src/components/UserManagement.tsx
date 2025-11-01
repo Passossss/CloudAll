@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -8,87 +8,72 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Switch } from "./ui/switch";
-import { toast } from "sonner@2.0.3";
-import { UserPlus, Edit, Trash2, Shield, User } from "lucide-react";
+import { toast } from "sonner";
+import { UserPlus, Edit, Trash2, Shield, User, Loader2 } from "lucide-react";
+import { userApi, getErrorMessage } from "../services/api";
+import { Skeleton } from "./ui/skeleton";
 
 interface User {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  age: string;
-  income: string;
-  occupation: string;
+  phone?: string;
+  age?: number;
+  income?: number;
+  occupation?: string;
   isAdmin: boolean;
-  status: "ativo" | "inativo";
+  isActive: boolean;
   createdAt: string;
 }
 
 export function UserManagement() {
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: "1",
-      name: "João Silva",
-      email: "joao@exemplo.com",
-      phone: "(11) 99999-9999",
-      age: "25",
-      income: "R$ 5.000,00",
-      occupation: "Desenvolvedor",
-      isAdmin: true,
-      status: "ativo",
-      createdAt: "2024-01-15"
-    },
-    {
-      id: "2",
-      name: "Maria Santos",
-      email: "maria@exemplo.com",
-      phone: "(11) 88888-8888",
-      age: "22",
-      income: "R$ 3.000,00",
-      occupation: "Estudante",
-      isAdmin: false,
-      status: "ativo",
-      createdAt: "2024-02-20"
-    },
-    {
-      id: "3",
-      name: "Pedro Oliveira",
-      email: "pedro@exemplo.com",
-      phone: "(11) 77777-7777",
-      age: "28",
-      income: "R$ 4.500,00",
-      occupation: "Designer",
-      isAdmin: false,
-      status: "inativo",
-      createdAt: "2024-01-30"
-    }
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    password: "",
     phone: "",
     age: "",
     income: "",
     occupation: "",
     isAdmin: false,
-    status: "ativo" as "ativo" | "inativo"
+    isActive: true
   });
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    setIsLoading(true);
+    try {
+      const response = await userApi.listUsers();
+      setUsers(response.users || response || []);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
       name: "",
       email: "",
+      password: "",
       phone: "",
       age: "",
       income: "",
       occupation: "",
       isAdmin: false,
-      status: "ativo"
+      isActive: true
     });
   };
 
@@ -97,54 +82,82 @@ export function UserManagement() {
     setFormData({
       name: user.name,
       email: user.email,
-      phone: user.phone,
-      age: user.age,
-      income: user.income,
-      occupation: user.occupation,
+      password: "",
+      phone: user.phone || "",
+      age: user.age?.toString() || "",
+      income: user.income?.toString() || "",
+      occupation: user.occupation || "",
       isAdmin: user.isAdmin,
-      status: user.status
+      isActive: user.isActive
     });
     setIsEditDialogOpen(true);
   };
 
-  const handleSaveUser = () => {
-    if (selectedUser) {
-      // Editar usuário existente
-      setUsers(prev => prev.map(user => 
-        user.id === selectedUser.id 
-          ? { ...user, ...formData }
-          : user
-      ));
-      toast.success("Usuário atualizado com sucesso!");
-    } else {
-      // Criar novo usuário
-      const newUser: User = {
-        id: String(users.length + 1),
-        ...formData,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setUsers(prev => [...prev, newUser]);
-      toast.success("Usuário criado com sucesso!");
+  const handleSaveUser = async () => {
+    setIsSubmitting(true);
+    try {
+      if (selectedUser) {
+        // Editar usuário existente
+        const updateData: any = {
+          name: formData.name,
+          email: formData.email,
+          isActive: formData.isActive,
+        };
+        
+        if (formData.age) updateData.age = parseInt(formData.age);
+        if (formData.phone) updateData.phone = formData.phone;
+        if (formData.income) updateData.monthlyIncome = parseFloat(formData.income);
+        if (formData.occupation) updateData.occupation = formData.occupation;
+        
+        await userApi.updateUser(selectedUser.id, updateData);
+        toast.success("Usuário atualizado com sucesso!");
+      } else {
+        // Criar novo usuário
+        const createData: any = {
+          name: formData.name,
+          email: formData.email,
+          password: formData.password || "senha123",
+        };
+        
+        if (formData.age) createData.age = parseInt(formData.age);
+        
+        await userApi.createUser(createData);
+        toast.success("Usuário criado com sucesso!");
+      }
+      
+      await loadUsers();
+      setIsEditDialogOpen(false);
+      setIsCreateDialogOpen(false);
+      setSelectedUser(null);
+      resetForm();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    setIsEditDialogOpen(false);
-    setIsCreateDialogOpen(false);
-    setSelectedUser(null);
-    resetForm();
   };
 
-  const handleDelete = (userId: string) => {
-    setUsers(prev => prev.filter(user => user.id !== userId));
-    toast.success("Usuário removido com sucesso!");
+  const handleDelete = async (userId: string) => {
+    try {
+      await userApi.deleteUser(userId);
+      toast.success("Usuário removido com sucesso!");
+      await loadUsers();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
   };
 
-  const toggleAdmin = (userId: string) => {
-    setUsers(prev => prev.map(user => 
-      user.id === userId 
-        ? { ...user, isAdmin: !user.isAdmin }
-        : user
-    ));
-    toast.success("Permissões atualizadas!");
+  const toggleAdmin = async (userId: string) => {
+    try {
+      const user = users.find(u => u.id === userId);
+      if (user) {
+        await userApi.updateUser(userId, { isAdmin: !user.isAdmin });
+        toast.success("Permissões atualizadas!");
+        await loadUsers();
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
   };
 
   const handleChange = (field: string, value: string | boolean) => {
@@ -176,6 +189,20 @@ export function UserManagement() {
           />
         </div>
       </div>
+
+      {!selectedUser && (
+        <div className="space-y-2">
+          <Label htmlFor="password">Senha</Label>
+          <Input
+            id="password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => handleChange("password", e.target.value)}
+            placeholder="Senha para novo usuário"
+            required={!selectedUser}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -235,17 +262,13 @@ export function UserManagement() {
           />
           <Label htmlFor="isAdmin">Administrador</Label>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="status">Status</Label>
-          <Select value={formData.status} onValueChange={(value: "ativo" | "inativo") => handleChange("status", value)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ativo">Ativo</SelectItem>
-              <SelectItem value="inativo">Inativo</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="isActive"
+            checked={formData.isActive}
+            onCheckedChange={(checked) => handleChange("isActive", checked)}
+          />
+          <Label htmlFor="isActive">Ativo</Label>
         </div>
       </div>
     </div>
@@ -275,10 +298,25 @@ export function UserManagement() {
             </DialogHeader>
             <UserForm />
             <div className="flex gap-3 pt-4">
-              <Button onClick={handleSaveUser} className="bg-primary hover:bg-primary/90">
-                Criar Usuário
+              <Button 
+                onClick={handleSaveUser} 
+                className="bg-primary hover:bg-primary/90"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Criando...
+                  </>
+                ) : (
+                  'Criar Usuário'
+                )}
               </Button>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsCreateDialogOpen(false)}
+                disabled={isSubmitting}
+              >
                 Cancelar
               </Button>
             </div>
@@ -294,29 +332,39 @@ export function UserManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>Ocupação</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Data Criação</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : users.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>Nenhum usuário encontrado</p>
+              <p className="text-sm mt-2">Crie o primeiro usuário usando o botão acima</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>E-mail</TableHead>
+                  <TableHead>Idade</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Data Criação</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.phone}</TableCell>
-                  <TableCell>{user.occupation}</TableCell>
+                  <TableCell>{user.age || '-'}</TableCell>
                   <TableCell>
-                    <Badge variant={user.status === "ativo" ? "default" : "secondary"}>
-                      {user.status}
+                    <Badge variant={user.isActive ? "default" : "secondary"}>
+                      {user.isActive ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -342,7 +390,9 @@ export function UserManagement() {
                       </Button>
                     </div>
                   </TableCell>
-                  <TableCell>{user.createdAt}</TableCell>
+                  <TableCell>
+                    {new Date(user.createdAt).toLocaleDateString('pt-BR')}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button
@@ -364,8 +414,9 @@ export function UserManagement() {
                   </TableCell>
                 </TableRow>
               ))}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -380,10 +431,25 @@ export function UserManagement() {
           </DialogHeader>
           <UserForm />
           <div className="flex gap-3 pt-4">
-            <Button onClick={handleSaveUser} className="bg-primary hover:bg-primary/90">
-              Salvar Alterações
+            <Button 
+              onClick={handleSaveUser} 
+              className="bg-primary hover:bg-primary/90"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                'Salvar Alterações'
+              )}
             </Button>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={isSubmitting}
+            >
               Cancelar
             </Button>
           </div>

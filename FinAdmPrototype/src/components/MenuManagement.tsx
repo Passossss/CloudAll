@@ -224,7 +224,7 @@ export function MenuManagement() {
       </div>
       <div className="flex gap-2 pt-4">
         <Button className="flex-1 bg-orange-500 hover:bg-orange-600">
-          {editingItem ? 'Salvar Alterações' : 'Criar Menu'}Confirmar
+          {editingItem ? 'Salvar Alterações' : 'Criar Menu'}
         </Button>
         <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
           Cancelar

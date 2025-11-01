@@ -1,17 +1,21 @@
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
-import finLogo from "../assets/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
+import finLogo from "figma:asset/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
+import { useUser } from "../contexts/UserContext";
+import { toast } from "sonner";
 
 interface CreateAccountProps {
   onPageChange: (page: string) => void;
 }
 
 export function CreateAccount({ onPageChange }: CreateAccountProps) {
+  const { register } = useUser();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -37,7 +41,33 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
           </div>
 
           {/* Formulário */}
-          <form className="space-y-4">
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            
+            if (formData.password !== formData.confirmPassword) {
+              toast.error('As senhas não coincidem');
+              return;
+            }
+
+            if (formData.password.length < 6) {
+              toast.error('A senha deve ter pelo menos 6 caracteres');
+              return;
+            }
+
+            setIsLoading(true);
+            try {
+              await register({
+                email: formData.email,
+                password: formData.password,
+                name: formData.fullName,
+              });
+              onPageChange('dashboard');
+            } catch (error) {
+              // Error already handled by useAuth hook
+            } finally {
+              setIsLoading(false);
+            }
+          }} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Nome completo</label>
               <Input
@@ -46,6 +76,8 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                 value={formData.fullName}
                 onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
                 className="w-full h-12 px-4 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                required
+                disabled={isLoading}
               />
             </div>
 
@@ -57,6 +89,8 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 className="w-full h-12 px-4 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                required
+                disabled={isLoading}
               />
             </div>
 
@@ -69,6 +103,9 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                   value={formData.password}
                   onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                   className="w-full h-12 px-4 pr-12 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                  required
+                  minLength={6}
+                  disabled={isLoading}
                 />
                 <Button
                   type="button"
@@ -76,6 +113,7 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                   size="sm"
                   className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                 </Button>
@@ -91,6 +129,9 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                   className="w-full h-12 px-4 pr-12 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                  required
+                  minLength={6}
+                  disabled={isLoading}
                 />
                 <Button
                   type="button"
@@ -98,6 +139,7 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                   size="sm"
                   className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isLoading}
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                 </Button>
@@ -110,14 +152,15 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                 checked={acceptTerms}
                 onCheckedChange={setAcceptTerms}
                 className="mt-0.5"
+                disabled={isLoading}
               />
               <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed">
                 Eu concordo com os{" "}
-                <Button variant="link" className="p-0 h-auto text-sm text-[#F87B07] hover:text-[#f87b07]/80">
+                <Button type="button" variant="link" className="p-0 h-auto text-sm text-[#F87B07] hover:text-[#f87b07]/80">
                   Termos de Uso
                 </Button>{" "}
                 e{" "}
-                <Button variant="link" className="p-0 h-auto text-sm text-[#F87B07] hover:text-[#f87b07]/80">
+                <Button type="button" variant="link" className="p-0 h-auto text-sm text-[#F87B07] hover:text-[#f87b07]/80">
                   Política de Privacidade
                 </Button>
               </label>
@@ -126,9 +169,16 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
             <Button 
               type="submit" 
               className="w-full h-12 bg-[#F87B07] hover:bg-[#f87b07]/90 text-white font-medium rounded-lg"
-              disabled={!acceptTerms}
+              disabled={!acceptTerms || isLoading}
             >
-              Criar conta
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Criando conta...
+                </>
+              ) : (
+                'Criar conta'
+              )}
             </Button>
           </form>
 

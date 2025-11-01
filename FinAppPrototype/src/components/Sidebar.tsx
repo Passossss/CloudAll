@@ -23,9 +23,9 @@ export function Sidebar({ currentPage, onPageChange, isCollapsed, onCollapsedCha
   const { isAdmin } = useUser();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([
     { id: "dashboard", label: "Dashboard", icon: Home, isPinned: true, adminOnly: false },
+    { id: "users", label: "Cadastro de Usuário", icon: Users, isPinned: true, adminOnly: false },
     { id: "transactions", label: "Transações", icon: DollarSign, isPinned: true, adminOnly: false },
-    { id: "categories", label: "Categorias", icon: Tag, isPinned: true, adminOnly: false },
-    { id: "users", label: "Cadastro de Usuário", icon: Users, isPinned: false, adminOnly: false },
+    { id: "categories", label: "Categorias", icon: Tag, isPinned: false, adminOnly: false },
     { id: "user-management", label: "Gerenciar Usuários", icon: UserCog, isPinned: false, adminOnly: true },
     { id: "menu-management", label: "Gerenciar Menus", icon: Menu, isPinned: false, adminOnly: true },
     { id: "reports", label: "Relatórios", icon: BarChart3, isPinned: false, adminOnly: false },

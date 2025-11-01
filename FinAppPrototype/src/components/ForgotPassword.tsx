@@ -2,7 +2,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
-import finLogo from "../assets/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
+import finLogo from "figma:asset/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
 
 interface ForgotPasswordProps {
   onPageChange: (page: string) => void;

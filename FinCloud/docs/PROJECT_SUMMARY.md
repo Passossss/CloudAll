@@ -38,6 +38,10 @@ github.com/passossss/FinCloud
 github.com/passossss/FinAppPrototype
 github.com/passossss/FinAdmPrototype
 
+
+docs da atividade:
+https://pucpredu-my.sharepoint.com/:f:/g/personal/otavio_l_pucpr_edu_br/ElATc2p9FoZGlDt1sIFDqzwBFtPTjKzHBu7-F3p5fLKKIg?e=lAgWB4
+
 🐳 Docker Hub
 
 Repositórios públicos (images):
@@ -90,7 +94,3 @@ Cada microsserviço e o BFF possuem um Dockerfile configurado e publicado no Doc
 📅 Status
 
 ✅ Todos os microsserviços, BFF, functions e microfrontends estão publicados e integrados (URLs e imagens listadas acima).
-
----
-
-Arquivo gerado automaticamente com base nas informações do repositório (2025-10-27). Se quiser, adiciono uma versão em inglês, exportações SVG/PNG dos diagramas ou imagens para slides.

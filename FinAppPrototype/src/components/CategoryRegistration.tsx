@@ -5,8 +5,9 @@ import { Label } from "./ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Badge } from "./ui/badge";
-import { Trash2, Plus } from "lucide-react";
-import { toast } from "sonner@2.0.3";
+import { Trash2, Plus, Info } from "lucide-react";
+import { toast } from "sonner";
+import { Alert, AlertDescription } from "./ui/alert";
 
 export function CategoryRegistration() {
   const [formData, setFormData] = useState({
@@ -16,11 +17,18 @@ export function CategoryRegistration() {
     description: ""
   });
 
+  // NOTA: As categorias são gerenciadas localmente por enquanto
+  // O backend não possui endpoint específico para CRUD de categorias
+  // As categorias são extraídas dinamicamente das transações existentes
   const [categories, setCategories] = useState([
-    { id: 1, name: "Alimentação", type: "Despesa", color: "#ef4444" },
-    { id: 2, name: "Transporte", type: "Despesa", color: "#3b82f6" },
-    { id: 3, name: "Salário", type: "Receita", color: "#10b981" },
-    { id: 4, name: "Entretenimento", type: "Despesa", color: "#8b5cf6" },
+    { id: 1, name: "food", label: "Alimentação", type: "Despesa", color: "#ef4444" },
+    { id: 2, name: "transport", label: "Transporte", type: "Despesa", color: "#3b82f6" },
+    { id: 3, name: "salary", label: "Salário", type: "Receita", color: "#10b981" },
+    { id: 4, name: "entertainment", label: "Entretenimento", type: "Despesa", color: "#8b5cf6" },
+    { id: 5, name: "shopping", label: "Compras", type: "Despesa", color: "#f59e0b" },
+    { id: 6, name: "freelance", label: "Freelance", type: "Receita", color: "#10b981" },
+    { id: 7, name: "health", label: "Saúde", type: "Despesa", color: "#ef4444" },
+    { id: 8, name: "education", label: "Educação", type: "Despesa", color: "#8b5cf6" },
   ]);
 
   const colors = [
@@ -58,9 +66,16 @@ export function CategoryRegistration() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold text-gray-900">Cadastro de Categorias</h2>
-        <p className="text-gray-600 mt-1">Organize suas transações por categorias</p>
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Cadastro de Categorias</h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Organize suas transações por categorias</p>
       </div>
+
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          As categorias são pré-definidas e utilizadas nas transações. O backend ainda não possui endpoint para gerenciar categorias customizadas.
+        </AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
@@ -151,7 +166,7 @@ export function CategoryRegistration() {
                       style={{ backgroundColor: category.color }}
                     />
                     <div>
-                      <p className="font-medium">{category.name}</p>
+                      <p className="font-medium">{category.label || category.name}</p>
                       <Badge
                         variant={category.type === "Receita" ? "default" : "secondary"}
                         className="text-xs"
@@ -164,8 +179,10 @@ export function CategoryRegistration() {
                     variant="ghost"
                     size="sm"
                     onClick={() => deleteCategory(category.id)}
+                    disabled
+                    title="Categorias pré-definidas não podem ser removidas"
                   >
-                    <Trash2 className="h-4 w-4 text-red-500" />
+                    <Trash2 className="h-4 w-4 text-gray-400" />
                   </Button>
                 </div>
               ))}

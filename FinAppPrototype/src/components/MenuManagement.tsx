@@ -8,7 +8,7 @@ import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Switch } from "./ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { Plus, Edit, Trash2, Pin, Home, Users, Tag, DollarSign, BarChart3, CreditCard, UserCog, Menu, Settings, FileText } from "lucide-react";
 
 interface MenuItem {

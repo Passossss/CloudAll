@@ -1,16 +1,19 @@
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
-import finLogo from "../assets/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
+import finLogo from "figma:asset/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
+import { useUser } from "../contexts/UserContext";
 
 interface LoginProps {
   onPageChange: (page: string) => void;
 }
 
 export function Login({ onPageChange }: LoginProps) {
+  const { login } = useUser();
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: ""
@@ -34,7 +37,18 @@ export function Login({ onPageChange }: LoginProps) {
           </div>
 
           {/* Formulário */}
-          <form className="space-y-4">
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            setIsLoading(true);
+            try {
+              await login(formData.email, formData.password);
+              onPageChange('dashboard');
+            } catch (error) {
+              // Error already handled by useAuth hook
+            } finally {
+              setIsLoading(false);
+            }
+          }} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <Input
@@ -43,6 +57,8 @@ export function Login({ onPageChange }: LoginProps) {
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 className="w-full h-12 px-4 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                required
+                disabled={isLoading}
               />
             </div>
 
@@ -55,6 +71,8 @@ export function Login({ onPageChange }: LoginProps) {
                   value={formData.password}
                   onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
                   className="w-full h-12 px-4 pr-12 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                  required
+                  disabled={isLoading}
                 />
                 <Button
                   type="button"
@@ -62,6 +80,7 @@ export function Login({ onPageChange }: LoginProps) {
                   size="sm"
                   className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                 </Button>
@@ -74,13 +93,16 @@ export function Login({ onPageChange }: LoginProps) {
                   id="remember"
                   checked={rememberMe}
                   onCheckedChange={setRememberMe}
+                  disabled={isLoading}
                 />
                 <label htmlFor="remember" className="text-sm text-gray-600">Lembrar de mim</label>
               </div>
               <Button 
+                type="button"
                 variant="link" 
                 className="p-0 h-auto text-sm text-[#F87B07] hover:text-[#f87b07]/80"
                 onClick={() => onPageChange('forgot-password')}
+                disabled={isLoading}
               >
                 Esqueceu sua senha?
               </Button>
@@ -89,8 +111,16 @@ export function Login({ onPageChange }: LoginProps) {
             <Button 
               type="submit" 
               className="w-full h-12 bg-[#F87B07] hover:bg-[#f87b07]/90 text-white font-medium rounded-lg"
+              disabled={isLoading}
             >
-              Entrar
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                'Entrar'
+              )}
             </Button>
           </form>
 
