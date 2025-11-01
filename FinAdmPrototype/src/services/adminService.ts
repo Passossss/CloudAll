@@ -1,12 +1,9 @@
 import api from './api';
-import { User } from './authService';
+import type { AdminUser, SystemStats, MenuItem, Permission } from './types';
 
-export interface AdminUser extends User {
-  status: 'active' | 'inactive';
-  lastLogin?: string;
-  transactionCount?: number;
-  totalBalance?: number;
-}
+// ============================================
+// Types
+// ============================================
 
 export interface CreateUserData {
   name: string;
@@ -28,6 +25,14 @@ export interface UpdateUserData {
   status?: 'active' | 'inactive';
 }
 
+export interface UserFilters {
+  search?: string;
+  role?: 'normal' | 'admin' | 'all';
+  status?: 'active' | 'inactive' | 'all';
+  page?: number;
+  limit?: number;
+}
+
 export interface UserListResponse {
   users: AdminUser[];
   pagination: {
@@ -38,32 +43,32 @@ export interface UserListResponse {
   };
 }
 
-export interface SystemStats {
-  totalUsers: number;
-  activeUsers: number;
-  totalTransactions: number;
-  totalRevenue: number;
-  newUsersThisMonth: number;
-  averageTransactionsPerUser: number;
+export interface UpdateMenuData {
+  items: MenuItem[];
 }
 
-export interface UserFilters {
-  search?: string;
-  role?: 'normal' | 'admin' | 'all';
-  status?: 'active' | 'inactive' | 'all';
-  page?: number;
-  limit?: number;
+export interface UpdatePermissionData {
+  roles: string[];
 }
+
+// ============================================
+// Admin Service
+// ============================================
 
 class AdminService {
+  // ============================================
+  // User Management
+  // ============================================
+
   /**
    * Lista todos os usuários do sistema (admin only)
+   * GET /users
    */
   async listUsers(filters?: UserFilters): Promise<UserListResponse> {
     const params = new URLSearchParams();
     
     if (filters?.search) {
-      params.append('search', filters.search);
+      params.append('q', filters.search);
     }
     if (filters?.role && filters.role !== 'all') {
       params.append('role', filters.role);
@@ -79,53 +84,89 @@ class AdminService {
     }
 
     const queryString = params.toString();
-    const url = `/admin/users${queryString ? `?${queryString}` : ''}`;
+    const url = `/users${queryString ? `?${queryString}` : ''}`;
     
-    const response = await api.get<UserListResponse>(url);
-    return response.data;
-  }
-
-  /**
-   * Cria um novo usuário (admin only)
-   */
-  async createUser(data: CreateUserData): Promise<AdminUser> {
-    const response = await api.post<{ user: AdminUser }>('/admin/users', data);
-    return response.data.user;
-  }
-
-  /**
-   * Atualiza um usuário (admin only)
-   */
-  async updateUser(userId: string, data: UpdateUserData): Promise<AdminUser> {
-    const response = await api.put<{ user: AdminUser }>(`/admin/users/${userId}`, data);
-    return response.data.user;
-  }
-
-  /**
-   * Deleta um usuário (admin only)
-   */
-  async deleteUser(userId: string): Promise<void> {
-    await api.delete(`/admin/users/${userId}`);
-  }
-
-  /**
-   * Obtém estatísticas gerais do sistema (admin only)
-   */
-  async getSystemStats(): Promise<SystemStats> {
-    const response = await api.get<{ stats: SystemStats }>('/admin/stats');
-    return response.data.stats;
+    const response = await api.get(url);
+    
+    // Adaptar formato de resposta do BFF/microserviço
+    // Formato esperado: { data: { users: [...], pagination: {...} } } ou { users: [...], pagination: {...} }
+    const responseData = response.data.data || response.data;
+    const usersList = responseData.users || responseData.data || [];
+    const paginationData = responseData.pagination || responseData.meta || { page: 1, limit: 20, total: 0 };
+    
+    return {
+      users: usersList,
+      pagination: {
+        current: paginationData.current || paginationData.page || 1,
+        pages: paginationData.pages || Math.ceil((paginationData.total || 0) / (paginationData.limit || 20)),
+        total: paginationData.total || 0,
+        limit: paginationData.limit || 20,
+      },
+    };
   }
 
   /**
    * Obtém detalhes completos de um usuário (admin only)
+   * GET /users/:id
    */
   async getUserDetails(userId: string): Promise<AdminUser> {
-    const response = await api.get<{ user: AdminUser }>(`/admin/users/${userId}`);
+    const response = await api.get(`/users/${userId}`);
+    // Adaptar formato de resposta
+    return response.data.user || response.data.data?.user || response.data;
+  }
+
+  /**
+   * Cria um novo usuário (admin only)
+   * POST /users
+   */
+  async createUser(data: CreateUserData): Promise<AdminUser> {
+    const response = await api.post('/users', data);
+    // Adaptar formato de resposta
+    return response.data.user || response.data.data?.user || response.data;
+  }
+
+  /**
+   * Atualiza um usuário (admin only)
+   * PUT /users/:id
+   */
+  async updateUser(userId: string, data: UpdateUserData): Promise<AdminUser> {
+    const response = await api.put(`/users/${userId}`, data);
+    // Adaptar formato de resposta
+    return response.data.user || response.data.data?.user || response.data;
+  }
+
+  /**
+   * Deleta um usuário (admin only)
+   * DELETE /users/:id
+   */
+  async deleteUser(userId: string): Promise<void> {
+    await api.delete(`/users/${userId}`);
+  }
+
+  /**
+   * Altera status de um usuário (ativar/desativar)
+   * PUT /users/:id/status
+   */
+  async toggleUserStatus(userId: string, status: 'active' | 'inactive'): Promise<AdminUser> {
+    const response = await api.put<{ user: AdminUser }>(`/users/${userId}/status`, {
+      status,
+    });
     return response.data.user;
   }
 
   /**
+   * Reseta senha de um usuário (admin only)
+   * POST /users/:id/reset-password
+   */
+  async resetUserPassword(userId: string, newPassword: string): Promise<void> {
+    await api.post(`/users/${userId}/reset-password`, {
+      password: newPassword,
+    });
+  }
+
+  /**
    * Exporta lista de usuários para CSV (admin only)
+   * GET /users/export
    */
   async exportUsers(filters?: UserFilters): Promise<Blob> {
     const params = new URLSearchParams();
@@ -138,7 +179,7 @@ class AdminService {
     }
 
     const queryString = params.toString();
-    const url = `/admin/users/export${queryString ? `?${queryString}` : ''}`;
+    const url = `/users/export${queryString ? `?${queryString}` : ''}`;
     
     const response = await api.get(url, {
       responseType: 'blob',
@@ -147,23 +188,142 @@ class AdminService {
     return response.data;
   }
 
+  // ============================================
+  // System Stats
+  // ============================================
+
   /**
-   * Altera status de um usuário (ativar/desativar)
+   * Obtém estatísticas gerais do sistema (admin only)
+   * GET /admin/stats
    */
-  async toggleUserStatus(userId: string, status: 'active' | 'inactive'): Promise<AdminUser> {
-    const response = await api.patch<{ user: AdminUser }>(`/admin/users/${userId}/status`, {
-      status,
-    });
-    return response.data.user;
+  async getSystemStats(): Promise<SystemStats> {
+    const response = await api.get<{ stats: SystemStats }>('/admin/stats');
+    return response.data.stats;
+  }
+
+  // ============================================
+  // Menu Management
+  // ============================================
+
+  /**
+   * Obtém configuração do menu
+   * GET /menu
+   */
+  async getMenu(): Promise<MenuItem[]> {
+    const response = await api.get<{ menu: MenuItem[] }>('/menu');
+    return response.data.menu;
   }
 
   /**
-   * Reseta senha de um usuário (admin only)
+   * Atualiza configuração do menu (admin only)
+   * PUT /menu
    */
-  async resetUserPassword(userId: string, newPassword: string): Promise<void> {
-    await api.post(`/admin/users/${userId}/reset-password`, {
-      password: newPassword,
-    });
+  async updateMenu(data: UpdateMenuData): Promise<MenuItem[]> {
+    const response = await api.put<{ menu: MenuItem[] }>('/menu', data);
+    return response.data.menu;
+  }
+
+  /**
+   * Reordena itens do menu (admin only)
+   * PUT /menu/reorder
+   */
+  async reorderMenu(itemIds: string[]): Promise<void> {
+    await api.put('/menu/reorder', { itemIds });
+  }
+
+  // ============================================
+  // Permission Management
+  // ============================================
+
+  /**
+   * Lista todas as permissões
+   * GET /permissions
+   */
+  async getPermissions(): Promise<Permission[]> {
+    const response = await api.get<{ permissions: Permission[] }>('/permissions');
+    return response.data.permissions;
+  }
+
+  /**
+   * Atualiza permissões de um recurso (admin only)
+   * PUT /permissions/:id
+   */
+  async updatePermission(permissionId: string, data: UpdatePermissionData): Promise<Permission> {
+    const response = await api.put<{ permission: Permission }>(
+      `/permissions/${permissionId}`,
+      data
+    );
+    return response.data.permission;
+  }
+
+  /**
+   * Obtém permissões de um usuário específico
+   * GET /users/:id/permissions
+   */
+  async getUserPermissions(userId: string): Promise<Permission[]> {
+    const response = await api.get<{ permissions: Permission[] }>(`/users/${userId}/permissions`);
+    return response.data.permissions;
+  }
+
+  /**
+   * Verifica se usuário tem permissão específica
+   * GET /permissions/check
+   */
+  async checkPermission(resource: string, action: string): Promise<boolean> {
+    const response = await api.get<{ hasPermission: boolean }>(
+      `/permissions/check?resource=${resource}&action=${action}`
+    );
+    return response.data.hasPermission;
+  }
+
+  // ============================================
+  // Activity Logs
+  // ============================================
+
+  /**
+   * Obtém logs de atividade do sistema (admin only)
+   * GET /admin/activity-logs
+   */
+  async getActivityLogs(filters?: {
+    userId?: string;
+    action?: string;
+    from?: string;
+    to?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    logs: Array<{
+      id: string;
+      userId: string;
+      userName: string;
+      action: string;
+      resource: string;
+      details?: any;
+      ipAddress?: string;
+      userAgent?: string;
+      createdAt: string;
+    }>;
+    pagination: {
+      current: number;
+      pages: number;
+      total: number;
+      limit: number;
+    };
+  }> {
+    const params = new URLSearchParams();
+    
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.action) params.append('action', filters.action);
+    if (filters?.from) params.append('from', filters.from);
+    if (filters?.to) params.append('to', filters.to);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+
+    const queryString = params.toString();
+    const url = `/admin/activity-logs${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await api.get(url);
+    return response.data;
   }
 }
 

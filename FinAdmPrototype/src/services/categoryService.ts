@@ -1,60 +1,67 @@
 import api from './api';
+import type { Category, CategoryType } from './types';
 
-export type CategoryType = 'income' | 'expense';
-
-export interface Category {
-  id: string;
-  userId: string;
-  name: string;
-  color: string;
-  icon: string;
-  type: CategoryType;
-  transactionCount?: number;
-  totalAmount?: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
+// ============================================
+// Types
+// ============================================
 
 export interface CreateCategoryData {
-  userId: string;
   name: string;
+  type: CategoryType;
   color: string;
   icon: string;
-  type: CategoryType;
+  parentId?: string;
 }
 
 export interface UpdateCategoryData {
   name?: string;
+  type?: CategoryType;
   color?: string;
   icon?: string;
-  type?: CategoryType;
+  parentId?: string;
 }
 
-export interface CategoryListResponse {
-  categories: Category[];
-  total: number;
+export interface CategoryFilters {
+  type?: CategoryType | 'all';
+  search?: string;
 }
+
+export interface CategoryStats {
+  transactionCount: number;
+  totalAmount: number;
+  lastUsed?: string;
+  monthlyAverage?: number;
+}
+
+// ============================================
+// Category Service
+// ============================================
 
 class CategoryService {
   /**
-   * Cria uma nova categoria
-   */
-  async create(data: CreateCategoryData): Promise<Category> {
-    const response = await api.post<{ category: Category }>('/categories', data);
-    return response.data.category;
-  }
-
-  /**
    * Lista todas as categorias do usuário
+   * GET /categories
    */
-  async list(userId: string, type?: CategoryType | 'all'): Promise<Category[]> {
-    const params = type && type !== 'all' ? `?type=${type}` : '';
-    const response = await api.get<CategoryListResponse>(`/categories/user/${userId}${params}`);
+  async list(filters?: CategoryFilters): Promise<Category[]> {
+    const params = new URLSearchParams();
+    
+    if (filters?.type && filters.type !== 'all') {
+      params.append('type', filters.type);
+    }
+    if (filters?.search) {
+      params.append('q', filters.search);
+    }
+
+    const queryString = params.toString();
+    const url = `/categories${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await api.get<{ categories: Category[] }>(url);
     return response.data.categories;
   }
 
   /**
    * Obtém uma categoria específica
+   * GET /categories/:id
    */
   async getById(categoryId: string): Promise<Category> {
     const response = await api.get<{ category: Category }>(`/categories/${categoryId}`);
@@ -62,7 +69,17 @@ class CategoryService {
   }
 
   /**
+   * Cria uma nova categoria
+   * POST /categories
+   */
+  async create(data: CreateCategoryData): Promise<Category> {
+    const response = await api.post<{ category: Category }>('/categories', data);
+    return response.data.category;
+  }
+
+  /**
    * Atualiza uma categoria
+   * PUT /categories/:id
    */
   async update(categoryId: string, data: UpdateCategoryData): Promise<Category> {
     const response = await api.put<{ category: Category }>(`/categories/${categoryId}`, data);
@@ -71,6 +88,7 @@ class CategoryService {
 
   /**
    * Deleta uma categoria
+   * DELETE /categories/:id
    */
   async delete(categoryId: string): Promise<void> {
     await api.delete(`/categories/${categoryId}`);
@@ -78,22 +96,37 @@ class CategoryService {
 
   /**
    * Obtém estatísticas de uso de uma categoria
+   * GET /categories/:id/stats
    */
-  async getStats(categoryId: string): Promise<{
-    transactionCount: number;
-    totalAmount: number;
-    lastUsed?: string;
-  }> {
-    const response = await api.get(`/categories/${categoryId}/stats`);
-    return response.data;
+  async getStats(categoryId: string): Promise<CategoryStats> {
+    const response = await api.get<{ stats: CategoryStats }>(`/categories/${categoryId}/stats`);
+    return response.data.stats;
   }
 
   /**
    * Lista categorias padrão do sistema (para novos usuários)
+   * GET /categories/defaults
    */
-  async getDefaultCategories(): Promise<Category[]> {
+  async getDefaults(): Promise<Category[]> {
     const response = await api.get<{ categories: Category[] }>('/categories/defaults');
     return response.data.categories;
+  }
+
+  /**
+   * Importa categorias padrão para o usuário
+   * POST /categories/import-defaults
+   */
+  async importDefaults(): Promise<Category[]> {
+    const response = await api.post<{ categories: Category[] }>('/categories/import-defaults');
+    return response.data.categories;
+  }
+
+  /**
+   * Reordena categorias (para drag & drop)
+   * PUT /categories/reorder
+   */
+  async reorder(categoryIds: string[]): Promise<void> {
+    await api.put('/categories/reorder', { categoryIds });
   }
 }
 
