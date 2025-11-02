@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
@@ -18,6 +19,7 @@ export function UserManagement() {
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [formRole, setFormRole] = useState<string>('normal');
   const [formStatus, setFormStatus] = useState<string>('active');
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   
   const { 
     users, 
@@ -29,21 +31,18 @@ export function UserManagement() {
     toggleUserStatus 
   } = useAdminUsers({ search: searchTerm });
 
-  // Filtrar usuários localmente se necessário (o hook já faz filtro pelo search)
-  const filteredUsers = users.filter(user =>
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // O hook já faz filtro pelo search, então não precisamos filtrar novamente
+  const filteredUsers = users;
 
   const handleDeleteUser = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir este usuário?')) {
-      try {
-        await deleteUser(id);
-        toast.success('Usuário excluído com sucesso');
-      } catch (error) {
-        console.error('Erro ao excluir usuário:', error);
-        toast.error('Erro ao excluir usuário');
-      }
+    try {
+      await deleteUser(id);
+      toast.success('Usuário excluído com sucesso');
+      setDeletingUserId(null);
+    } catch (error) {
+      console.error('Erro ao excluir usuário:', error);
+      toast.error('Erro ao excluir usuário');
+      setDeletingUserId(null);
     }
   };
 
@@ -261,14 +260,34 @@ export function UserManagement() {
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteUser(String(user.id))}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <AlertDialog open={deletingUserId === String(user.id)} onOpenChange={(open) => setDeletingUserId(open ? String(user.id) : null)}>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteUser(String(user.id))}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </TableCell>
                       </TableRow>

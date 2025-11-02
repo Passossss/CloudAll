@@ -62,7 +62,7 @@ export function useAdminUsers(filters?: UserFilters): UseAdminUsersResult {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters?.search, filters?.role, filters?.status, filters?.page, filters?.limit]);
 
   const loadStats = useCallback(async () => {
     try {

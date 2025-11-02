@@ -5,6 +5,7 @@ import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '../ui/alert-dialog';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
@@ -42,6 +43,9 @@ export function Transactions() {
   // Form state
   const [formType, setFormType] = useState<'income' | 'expense'>('expense');
   const [formCategory, setFormCategory] = useState('');
+  
+  // State para confirmação de exclusão
+  const [deletingTransactionId, setDeletingTransactionId] = useState<string | null>(null);
 
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -53,13 +57,13 @@ export function Transactions() {
   });
 
   const handleDeleteTransaction = async (id: string) => {
-    if (confirm('Tem certeza que deseja excluir esta transação?')) {
-      try {
-        await deleteTransaction(id);
-        toast.success('Transação excluída com sucesso');
-      } catch (error) {
-        toast.error('Erro ao excluir transação');
-      }
+    try {
+      await deleteTransaction(id);
+      toast.success('Transação excluída com sucesso');
+      setDeletingTransactionId(null);
+    } catch (error) {
+      toast.error('Erro ao excluir transação');
+      setDeletingTransactionId(null);
     }
   };
 
@@ -393,14 +397,34 @@ export function Transactions() {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteTransaction(transaction.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <AlertDialog open={deletingTransactionId === transaction.id} onOpenChange={(open) => setDeletingTransactionId(open ? transaction.id : null)}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir Transação</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteTransaction(transaction.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </TableCell>
                   </TableRow>
