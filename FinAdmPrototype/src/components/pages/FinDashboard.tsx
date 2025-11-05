@@ -99,8 +99,8 @@ export function FinDashboard({ onPageChange }: FinDashboardProps) {
                   R$ {saldoAtual.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <div className="flex items-center mt-1">
-                  <TrendingUp className="w-4 h-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-500">+5.2% vs mês anterior</span>
+                  <TrendingUp className="w-4 h-4 text-green-500 dark:text-green-400 mr-1" />
+                  <span className="text-sm text-green-500 dark:text-green-400">+5.2% vs mês anterior</span>
                 </div>
               </div>
               <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
@@ -115,16 +115,16 @@ export function FinDashboard({ onPageChange }: FinDashboardProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Receitas</p>
-                <p className="text-2xl font-semibold text-green-600">
+                <p className="text-2xl font-semibold text-green-600 dark:text-green-400">
                   R$ {totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <div className="flex items-center mt-1">
-                  <ArrowUpRight className="w-4 h-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-500">{crescimentoReceitas}</span>
+                  <ArrowUpRight className="w-4 h-4 text-green-500 dark:text-green-400 mr-1" />
+                  <span className="text-sm text-green-500 dark:text-green-400">{crescimentoReceitas}</span>
                 </div>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-green-600" />
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
             </div>
           </CardContent>
@@ -135,16 +135,16 @@ export function FinDashboard({ onPageChange }: FinDashboardProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Despesas</p>
-                <p className="text-2xl font-semibold text-red-600">
+                <p className="text-2xl font-semibold text-red-600 dark:text-red-400">
                   R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <div className="flex items-center mt-1">
-                  <ArrowDownRight className="w-4 h-4 text-red-500 mr-1" />
-                  <span className="text-sm text-red-500">{crescimentoDespesas}</span>
+                  <ArrowDownRight className="w-4 h-4 text-red-500 dark:text-red-400 mr-1" />
+                  <span className="text-sm text-red-500 dark:text-red-400">{crescimentoDespesas}</span>
                 </div>
               </div>
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <TrendingDown className="w-6 h-6 text-red-600" />
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <TrendingDown className="w-6 h-6 text-red-600 dark:text-red-400" />
               </div>
             </div>
           </CardContent>
@@ -263,12 +263,12 @@ export function FinDashboard({ onPageChange }: FinDashboardProps) {
               <div key={transaction.id} className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'
+                    transaction.type === 'income' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'
                   }`}>
                     {transaction.type === 'income' ? (
-                      <ArrowUpRight className={`w-5 h-5 ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`} />
+                      <ArrowUpRight className={`w-5 h-5 ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />
                     ) : (
-                      <ArrowDownRight className={`w-5 h-5 ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`} />
+                      <ArrowDownRight className={`w-5 h-5 ${transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`} />
                     )}
                   </div>
                   <div>
@@ -281,7 +281,7 @@ export function FinDashboard({ onPageChange }: FinDashboardProps) {
                 </div>
                 <div className="text-right">
                   <p className={`font-semibold ${
-                    transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                    transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                   }`}>
                     {transaction.type === 'income' ? '+' : ''}R$ {Math.abs(transaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
@@ -312,8 +312,8 @@ export function FinDashboard({ onPageChange }: FinDashboardProps) {
           onClick={() => onPageChange?.('transactions')}
         >
           <CardContent className="p-6 text-center">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <ArrowDownRight className="w-6 h-6 text-red-600" />
+            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+              <ArrowDownRight className="w-6 h-6 text-red-600 dark:text-red-400" />
             </div>
             <h3 className="font-medium">Nova Despesa</h3>
             <p className="text-sm text-muted-foreground">Registrar um gasto</p>

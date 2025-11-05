@@ -4,16 +4,117 @@ Sistema completo de gestão financeira com arquitetura de microserviços, inclui
 
 ## 🏗️ Arquitetura
 
+### Arquitetura Geral
+
 ```
 FinCloud/
 ├── bff/                      # Backend for Frontend (API Gateway)
-├── user-service/             # Microserviço de Usuários (MongoDB)
-├── transaction-service/      # Microserviço de Transações (SQL Server)
+├── user-service/             # Microserviço de Usuários (Clean Architecture)
+├── transaction-service/      # Microserviço de Transações (Clean Architecture)
 ├── azure-functions/          # Azure Functions (Opcional)
 ├── FinAdmPrototype/         # Frontend Administrativo (React + TypeScript)
 ├── FinAppPrototype/         # Frontend Cliente (React + TypeScript)
 └── docs/                    # Documentação
 ```
+
+### Clean Architecture
+
+Os microserviços (`user-service` e `transaction-service`) seguem os princípios da **Clean Architecture**, organizando o código em camadas bem definidas:
+
+```
+microservice/
+├── domain/                   # Camada de Domínio (Núcleo)
+│   ├── entities/            # Entidades de negócio puras
+│   └── repositories/        # Interfaces de repositórios
+│
+├── application/              # Camada de Aplicação
+│   └── features/            # Features organizadas por Vertical Slice
+│       ├── register-user/
+│       │   └── RegisterUserUseCase.js
+│       ├── login-user/
+│       │   └── LoginUserUseCase.js
+│       └── create-transaction/
+│           └── CreateTransactionUseCase.js
+│
+├── infrastructure/           # Camada de Infraestrutura
+│   └── repositories/        # Implementações concretas (TypeORM/MongoDB)
+│
+└── presentation/            # Camada de Apresentação
+    └── controllers/         # Controllers HTTP
+```
+
+#### Regras de Dependência
+
+A Clean Architecture garante que:
+
+1. **Domain Layer** (Núcleo)
+   - Não depende de nenhuma outra camada
+   - Contém apenas regras de negócio puras
+   - Entidades e interfaces de repositórios
+
+2. **Application Layer** (Casos de Uso)
+   - Depende apenas de Domain
+   - Implementa a lógica de negócio dos casos de uso
+   - Não conhece detalhes de infraestrutura
+
+3. **Infrastructure Layer** (Detalhes)
+   - Implementa interfaces definidas em Domain
+   - Acessa bancos de dados, APIs externas, etc.
+   - Pode depender de Application para uso de casos de uso
+
+4. **Presentation Layer** (Interface)
+   - Controllers HTTP, rotas
+   - Depende de Application (use cases)
+   - Não conhece detalhes de infraestrutura
+
+#### Benefícios
+
+- ✅ **Testabilidade**: Lógica de negócio isolada e fácil de testar
+- ✅ **Independência**: Domain não muda quando mudamos frameworks ou bancos
+- ✅ **Manutenibilidade**: Código organizado e fácil de entender
+- ✅ **Flexibilidade**: Troca de tecnologias sem afetar o core
+
+### Vertical Slice Architecture
+
+Além da Clean Architecture, o projeto também utiliza **Vertical Slice** para organizar features:
+
+```
+application/features/
+├── register-user/           # Feature completa de registro
+│   └── RegisterUserUseCase.js
+│
+├── login-user/              # Feature completa de login
+│   └── LoginUserUseCase.js
+│
+└── create-transaction/      # Feature completa de criação
+    └── CreateTransactionUseCase.js
+```
+
+#### Princípios do Vertical Slice
+
+- Cada feature é auto-contida (use case próprio)
+- Features não dependem de outras features
+- Facilita adicionar novas funcionalidades
+- Reduz acoplamento entre diferentes partes do sistema
+
+### Diagrama de Camadas
+
+```
+┌─────────────────────────────────────────┐
+│      Presentation (HTTP/Routes)         │
+│  ┌───────────────────────────────────┐  │
+│  │    Application (Use Cases)        │  │
+│  │  ┌─────────────────────────────┐  │  │
+│  │  │   Domain (Entities/Rules)   │  │  │
+│  │  └─────────────────────────────┘  │  │
+│  └───────────────────────────────────┘  │
+│  ┌───────────────────────────────────┐  │
+│  │  Infrastructure (DB/External)     │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+**Setas de dependência**: As camadas externas dependem das internas, mas nunca o contrário.
 
 ## ✨ Funcionalidades
 
@@ -42,7 +143,9 @@ FinCloud/
 
 ## 🚀 Quick Start
 
-### Opção 1: Setup Automático (Recomendado)
+### Desenvolvimento Local
+
+#### Opção 1: Setup Automático (Recomendado)
 
 ```powershell
 # Clone o repositório
@@ -56,9 +159,31 @@ cd CloudAll
 .\start-all.ps1
 ```
 
-### Opção 2: Setup Manual
+#### Opção 2: Setup Manual
 
 Siga as instruções detalhadas no arquivo [INTEGRATION.md](./INTEGRATION.md)
+
+### 🌐 Deploy no Azure
+
+Para fazer deploy de todos os serviços no Azure:
+
+1. **Criar recursos Azure:**
+```powershell
+cd FinCloud
+.\create-azure-resources.ps1
+```
+
+2. **Configurar variáveis de ambiente:**
+   - Veja o guia completo: [azure-config.md](./FinCloud/azure-config.md)
+   - Configure todas as variáveis no Portal Azure
+
+3. **Fazer deploy:**
+```powershell
+cd FinCloud
+.\deploy-azure.ps1
+```
+
+📖 **Guia completo de deploy:** [DEPLOY_AZURE.md](./DEPLOY_AZURE.md)
 
 ## 📋 Pré-requisitos
 
@@ -212,6 +337,28 @@ GET    /api/health                   # Status da API
 
 ## 🧪 Testes
 
+### Testes de Arquitetura
+
+Os microserviços incluem testes de arquitetura que validam as regras de dependência da Clean Architecture:
+
+```powershell
+# Testar arquitetura do User Service
+cd FinCloud\user-service
+npm test -- architecture.test.js
+
+# Testar arquitetura do Transaction Service
+cd FinCloud\transaction-service
+npm test -- architecture.test.js
+```
+
+Os testes verificam:
+- ✅ Domain não depende de outras camadas
+- ✅ Application só depende de Domain
+- ✅ Infrastructure não depende de Presentation
+- ✅ Vertical Slice está corretamente organizado
+
+### Testes Unitários
+
 ```powershell
 # Testar BFF
 cd FinCloud\bff
@@ -287,6 +434,14 @@ Este projeto está sob a licença MIT.
 ## 👥 Autores
 
 - **Victor** - Desenvolvimento inicial
+
+### Alunos do Projeto
+
+Este projeto foi desenvolvido como parte de um trabalho acadêmico aplicando conceitos de:
+- **Clean Architecture**: Separação de responsabilidades e independência de frameworks
+- **Vertical Slice Architecture**: Organização por features
+- **Microservices**: Arquitetura distribuída
+- **Test-Driven Development**: Testes de arquitetura e validação de dependências
 
 ## 🙏 Agradecimentos
 

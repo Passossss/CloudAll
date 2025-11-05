@@ -1,23 +1,15 @@
-﻿const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const express = require('express');
 const Joi = require('joi');
-const { getUserRepository, getUserProfileRepository } = require('../config/database');
-
-// Clean Architecture - Use Cases
-const RegisterUserUseCase = require('../application/features/register-user/RegisterUserUseCase');
-const LoginUserUseCase = require('../application/features/login-user/LoginUserUseCase');
+const UserController = require('../presentation/controllers/UserController');
 const UserRepository = require('../infrastructure/repositories/UserRepository');
 const UserProfileRepository = require('../infrastructure/repositories/UserProfileRepository');
 
 const router = express.Router();
-
-// Initialize Clean Architecture components
+const userController = new UserController();
 const userRepository = new UserRepository();
 const profileRepository = new UserProfileRepository();
-const registerUseCase = new RegisterUserUseCase(userRepository, profileRepository);
-const loginUseCase = new LoginUserUseCase(userRepository);
 
+// Validation schemas
 const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
@@ -31,65 +23,32 @@ const loginSchema = Joi.object({
   password: Joi.string().required()
 });
 
-router.post('/register', async (req, res) => {
-  try {
-    const { error, value } = registerSchema.validate(req.body);
+// Validation middleware
+const validate = (schema) => {
+  return (req, res, next) => {
+    const { error, value } = schema.validate(req.body);
     if (error) {
       return res.status(400).json({ error: 'Validation error', details: error.details });
     }
+    req.body = value;
+    next();
+  };
+};
 
-    // Use Clean Architecture Use Case
-    const result = await registerUseCase.execute(value);
-    res.status(201).json({
-      message: 'User created successfully',
-      ...result
-    });
-  } catch (error) {
-    if (error.message === 'User already exists') {
-      return res.status(409).json({ error: 'User already exists', message: 'Usuário já cadastrado com este email' });
-    }
-    console.error('Register error:', error);
-    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
-  }
-});
+// Public routes using Clean Architecture
+router.post('/register', validate(registerSchema), (req, res) => userController.register(req, res));
+router.post('/login', validate(loginSchema), (req, res) => userController.login(req, res));
 
-router.post('/login', async (req, res) => {
-  try {
-    const { error, value } = loginSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ error: 'Validation error', details: error.details });
-    }
-
-    // Use Clean Architecture Use Case
-    const { email, password } = value;
-    const result = await loginUseCase.execute(email, password);
-    res.json({
-      message: 'Login successful',
-      ...result
-    });
-  } catch (error) {
-    if (error.message === 'Invalid credentials') {
-      return res.status(401).json({ error: 'Invalid credentials', message: 'Email ou senha incorretos' });
-    }
-    if (error.message === 'Account inactive') {
-      return res.status(403).json({ error: 'Account inactive', message: 'Conta desativada' });
-    }
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
-  }
-});
-
+// Other routes (legacy - keeping for compatibility)
 router.get('/profile/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Use Clean Architecture Repository
     const user = await userRepository.findById(id);
     if (!user || !user.isActive) {
       return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
     }
 
     const profile = await profileRepository.findByUserId(id);
-
     res.json({
       user: {
         id: user.id,
@@ -114,9 +73,9 @@ router.put('/profile/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, age, monthly_income, financial_goals, spending_limit } = req.body;
-    // Use Clean Architecture Repositories
+
     if (name || age !== undefined) {
-      await userRepository.update(id, { 
+      await userRepository.update(id, {
         ...(name && { name }),
         ...(age !== undefined && { age })
       });
@@ -143,7 +102,6 @@ router.put('/profile/:id', async (req, res) => {
 router.delete('/profile/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Use Clean Architecture Repositories
     const user = await userRepository.findById(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
@@ -151,7 +109,6 @@ router.delete('/profile/:id', async (req, res) => {
 
     await userRepository.delete(id);
     await profileRepository.delete(id);
-
     return res.status(204).send();
   } catch (error) {
     console.error('Delete profile error:', error);
@@ -162,7 +119,6 @@ router.delete('/profile/:id', async (req, res) => {
 router.get('/stats/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Use Clean Architecture Repositories
     const user = await userRepository.findById(id);
     if (!user || !user.isActive) {
       return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
@@ -170,6 +126,14 @@ router.get('/stats/:id', async (req, res) => {
 
     const profile = await profileRepository.findByUserId(id);
     const daysSince = Math.floor((new Date() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24));
+
+    const calculateProfileCompletion = (profile) => {
+      if (!profile) return 30;
+      let completion = 30;
+      if (profile.monthlyIncome > 0) completion += 35;
+      if (profile.spendingLimit > 0) completion += 35;
+      return Math.min(completion, 100);
+    };
 
     res.json({
       stats: {
@@ -187,19 +151,10 @@ router.get('/stats/:id', async (req, res) => {
   }
 });
 
-function calculateProfileCompletion(profile) {
-  if (!profile) return 30;
-  let completion = 30;
-  if (profile.monthlyIncome > 0) completion += 35;
-  if (profile.spendingLimit > 0) completion += 35;
-  return Math.min(completion, 100);
-}
-
-// Public list users (simple, no auth)
+// Admin routes
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
-    // Use Clean Architecture Repository
     const result = await userRepository.findAll({}, { page, limit });
     
     const safe = result.users.map(u => ({
@@ -229,11 +184,9 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Admin routes - Get user by ID
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Use Clean Architecture Repository
     const user = await userRepository.findById(id);
     
     if (!user) {
@@ -256,44 +209,20 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Admin routes - Create user (admin only via BFF)
-router.post('/', async (req, res) => {
+router.post('/', validate(registerSchema), async (req, res) => {
   try {
-    const { error, value } = registerSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ error: 'Validation error', details: error.details });
-    }
-
-    // Use Clean Architecture Use Case
-    const result = await registerUseCase.execute(value);
-    const safe = {
-      id: result.user.id,
-      email: result.user.email,
-      name: result.user.name,
-      age: result.user.age,
-      role: result.user.role,
-      isActive: true,
-      createdAt: new Date()
-    };
-    res.status(201).json({
-      message: 'User created successfully',
-      user: safe
-    });
+    const result = await userController.register(req, res);
   } catch (error) {
-    if (error.message === 'User already exists') {
-      return res.status(409).json({ error: 'User already exists', message: 'Usuário já cadastrado com este email' });
-    }
     console.error('Create user error:', error);
     res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
 });
 
-// Admin routes - Update user
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, age, role } = req.body;
-    // Use Clean Architecture Repository
+
     const user = await userRepository.findById(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
@@ -325,11 +254,9 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Admin routes - Delete user (soft delete)
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    // Use Clean Architecture Repositories
     const user = await userRepository.findById(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
@@ -337,7 +264,6 @@ router.delete('/:id', async (req, res) => {
 
     await userRepository.delete(id);
     await profileRepository.delete(id);
-
     return res.status(204).send();
   } catch (error) {
     console.error('Delete user error:', error);
@@ -345,12 +271,10 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Admin routes - Toggle user status
 router.put('/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    // Use Clean Architecture Repository
     const user = await userRepository.findById(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });
@@ -374,12 +298,12 @@ router.put('/:id/status', async (req, res) => {
   }
 });
 
-// Admin routes - Reset user password
 router.post('/:id/reset-password', async (req, res) => {
   try {
     const { id } = req.params;
     const { password } = req.body;
-    // Use Clean Architecture Repository
+    const bcrypt = require('bcryptjs');
+    
     const user = await userRepository.findById(id);
     if (!user) {
       return res.status(404).json({ error: 'User not found', message: 'Usuário não encontrado' });

@@ -80,9 +80,9 @@ export function Login({ onPageChange }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F87B07] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#F87B07] dark:bg-[#c85f05] p-4">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl p-8 shadow-xl">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl">
           {/* Logo */}
           <div className="flex justify-center mb-6">
             <img src={finLogo} alt="Fin" className="w-16 h-16" />
@@ -90,16 +90,16 @@ export function Login({ onPageChange }: LoginProps) {
 
           {/* Título */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">FinApp</h1>
-            <h2 className="text-xl font-medium text-gray-900 mb-1">Entre para controlar suas finanças</h2>
-            <p className="text-gray-600 text-sm">Seu gerenciador financeiro pessoal</p>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">FinApp</h1>
+            <h2 className="text-xl font-medium text-gray-900 dark:text-white mb-1">Entre para controlar suas finanças</h2>
+            <p className="text-gray-600 dark:text-gray-300 text-sm">Seu gerenciador financeiro pessoal</p>
           </div>
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
               <Input
                 type="email"
                 placeholder="Digite seu email"
@@ -120,7 +120,7 @@ export function Login({ onPageChange }: LoginProps) {
 
             {/* Senha */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Senha</label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -161,7 +161,7 @@ export function Login({ onPageChange }: LoginProps) {
                   disabled={isLoading}
                   className="mt-0.5"
                 />
-                <label htmlFor="remember" className="text-sm text-gray-600 cursor-pointer">
+                <label htmlFor="remember" className="text-sm text-gray-600 dark:text-gray-300 cursor-pointer">
                   Lembrar de mim
                 </label>
               </div>
@@ -196,22 +196,22 @@ export function Login({ onPageChange }: LoginProps) {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">ou</span>
+              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">ou</span>
             </div>
           </div>
 
           {/* Criar Conta */}
           <div className="text-center space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-300">
               Não tem uma conta?
             </p>
             <Button 
               type="button"
               variant="outline" 
-              className="w-full h-12 border-gray-200 hover:bg-gray-50 rounded-lg"
+              className="w-full h-12 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg"
               onClick={() => onPageChange('create-account')}
               disabled={isLoading}
             >

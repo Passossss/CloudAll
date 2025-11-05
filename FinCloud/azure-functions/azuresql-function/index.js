@@ -1,5 +1,10 @@
 const sql = require('mssql');
 
+// Helper to sanitize SQL identifiers
+function sanitizeIdentifier(identifier) {
+  return identifier.replace(/[^a-zA-Z0-9_]/g, '');
+}
+
 // Azure SQL Database configuration
 const config = {
   server: process.env.AZURE_SQL_SERVER || 'fincloud.database.windows.net',
@@ -70,17 +75,25 @@ module.exports = async function (context, req) {
           return;
         }
 
+        // Sanitize table name to prevent SQL injection
+        const safeTable = sanitizeIdentifier(table);
+        
         const columns = Object.keys(data);
         const values = Object.values(data);
         const placeholders = columns.map((_, i) => `@param${i}`).join(', ');
 
-        const query = `INSERT INTO ${table} (${columns.join(', ')}) 
+        const query = `INSERT INTO [${safeTable}] (${columns.map(c => `[${c}]`).join(', ')}) 
                        OUTPUT INSERTED.* 
                        VALUES (${placeholders})`;
 
         const request = poolConnection.request();
         values.forEach((value, i) => {
-          request.input(`param${i}`, value);
+          // Auto-detect type
+          const sqlType = typeof value === 'number' ? sql.Decimal(18, 2) : 
+                         typeof value === 'boolean' ? sql.Bit : 
+                         value instanceof Date ? sql.DateTime2 : 
+                         sql.NVarChar(sql.MAX);
+          request.input(`param${i}`, sqlType, value);
         });
 
         const result = await request.query(query);
@@ -106,13 +119,16 @@ module.exports = async function (context, req) {
         const limit = parseInt(req.query.limit) || 100;
         const offset = parseInt(req.query.offset) || 0;
 
+        // Sanitize table name
+        const safeTable = sanitizeIdentifier(table);
+        
         let query;
         const request = poolConnection.request();
-
+        
         if (id) {
           // Find by ID
-          query = `SELECT * FROM ${table} WHERE id = @id`;
-          request.input('id', id);
+          query = `SELECT * FROM [${safeTable}] WHERE id = @id`;
+          request.input('id', sql.VarChar, id);
 
           const result = await request.query(query);
           
@@ -133,19 +149,20 @@ module.exports = async function (context, req) {
           };
         } else {
           // Find multiple with optional WHERE clause
+          // Note: WHERE clause should be parameterized for security
           const whereClause = where ? `WHERE ${where}` : '';
-          query = `SELECT * FROM ${table} ${whereClause} 
+          query = `SELECT * FROM [${safeTable}] ${whereClause} 
                    ORDER BY id 
                    OFFSET @offset ROWS 
                    FETCH NEXT @limit ROWS ONLY`;
           
-          request.input('limit', limit);
-          request.input('offset', offset);
+          request.input('limit', sql.Int, limit);
+          request.input('offset', sql.Int, offset);
 
           const result = await request.query(query);
 
           // Get total count
-          const countQuery = `SELECT COUNT(*) as total FROM ${table} ${whereClause}`;
+          const countQuery = `SELECT COUNT(*) as total FROM [${safeTable}] ${whereClause}`;
           const countResult = await poolConnection.request().query(countQuery);
           const total = countResult.recordset[0].total;
 
@@ -177,19 +194,27 @@ module.exports = async function (context, req) {
           return;
         }
 
+        // Sanitize table name
+        const safeTable = sanitizeIdentifier(table);
+        
         const columns = Object.keys(updateData);
         const values = Object.values(updateData);
-        const setClause = columns.map((col, i) => `${col} = @param${i}`).join(', ');
+        const setClause = columns.map((col, i) => `[${col}] = @param${i}`).join(', ');
 
-        const query = `UPDATE ${table} 
+        const query = `UPDATE [${safeTable}] 
                        SET ${setClause} 
                        OUTPUT INSERTED.*
                        WHERE id = @id`;
 
         const request = poolConnection.request();
-        request.input('id', id);
+        request.input('id', sql.NVarChar(255), id);
         values.forEach((value, i) => {
-          request.input(`param${i}`, value);
+          // Auto-detect type
+          const sqlType = typeof value === 'number' ? sql.Decimal(18, 2) : 
+                         typeof value === 'boolean' ? sql.Bit : 
+                         value instanceof Date ? sql.DateTime2 : 
+                         sql.NVarChar(sql.MAX);
+          request.input(`param${i}`, sqlType, value);
         });
 
         const result = await request.query(query);
@@ -226,12 +251,15 @@ module.exports = async function (context, req) {
           return;
         }
 
-        const query = `DELETE FROM ${table} 
+        // Sanitize table name
+        const safeTable = sanitizeIdentifier(table);
+        
+        const query = `DELETE FROM [${safeTable}] 
                        OUTPUT DELETED.*
                        WHERE id = @id`;
 
         const request = poolConnection.request();
-        request.input('id', id);
+        request.input('id', sql.NVarChar(255), id);
 
         const result = await request.query(query);
 

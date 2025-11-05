@@ -12,23 +12,39 @@ const proxyToUserService = async (req, res, next) => {
       url: `${USER_SERVICE_URL}/api/users${req.path}`,
       data: req.body,
       params: req.query,
+      timeout: 10000, // 10 segundos de timeout
       headers: {
         'Content-Type': 'application/json',
-        ...req.headers
+        // Remover headers que podem causar problemas no proxy
+        ...(req.headers.authorization && { Authorization: req.headers.authorization }),
+        ...(req.headers.accept && { Accept: req.headers.accept }),
       }
     };
 
     const response = await axios(config);
     res.status(response.status).json(response.data);
   } catch (error) {
+    // Erro de resposta do servidor (4xx, 5xx)
     if (error.response) {
       res.status(error.response.status).json(error.response.data);
-    } else {
-      console.error('User Service Error:', error);
-      console.error('Failed URL:', `${USER_SERVICE_URL}/api/users${req.path}`);
+    } 
+    // Erro de conexão/timeout (serviço não disponível)
+    else if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+      console.error('User Service não está disponível:', error.message);
+      console.error('URL tentada:', `${USER_SERVICE_URL}/api/users${req.path}`);
       res.status(503).json({ 
         error: 'User service unavailable',
-        message: 'Serviço de usuários temporariamente indisponível',
+        message: 'Serviço de usuários não está disponível. Verifique se o User Service está rodando na porta 3001.',
+        details: error.message,
+        serviceUrl: USER_SERVICE_URL
+      });
+    } 
+    // Outros erros
+    else {
+      console.error('User Service Error:', error.message);
+      res.status(503).json({ 
+        error: 'User service error',
+        message: 'Erro ao comunicar com o serviço de usuários',
         details: error.message
       });
     }

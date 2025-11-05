@@ -226,29 +226,29 @@ export function Dashboard({ onPageChange }: DashboardProps = {}) {
       title: "Receitas",
       value: isLoading ? "..." : formatCurrency(stats.income),
       icon: TrendingUp,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-100 dark:bg-green-900/30",
     },
     {
       title: "Despesas",
       value: isLoading ? "..." : formatCurrency(stats.expenses),
       icon: TrendingDown,
-      color: "text-red-600",
-      bgColor: "bg-red-100",
+      color: "text-red-600 dark:text-red-400",
+      bgColor: "bg-red-100 dark:bg-red-900/30",
     },
     {
       title: "Saldo Atual",
       value: isLoading ? "..." : formatCurrency(stats.balance),
       icon: DollarSign,
-      color: stats.balance >= 0 ? "text-blue-600" : "text-orange-600",
-      bgColor: stats.balance >= 0 ? "bg-blue-100" : "bg-orange-100",
+      color: stats.balance >= 0 ? "text-blue-600 dark:text-blue-400" : "text-orange-600 dark:text-orange-400",
+      bgColor: stats.balance >= 0 ? "bg-blue-100 dark:bg-blue-900/30" : "bg-orange-100 dark:bg-orange-900/30",
     },
     {
       title: "Categorias",
       value: isLoading ? "..." : stats.categoriesCount.toString(),
       icon: Tag,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-100 dark:bg-purple-900/30",
     }
   ];
 
@@ -331,7 +331,7 @@ export function Dashboard({ onPageChange }: DashboardProps = {}) {
               ))}
             </div>
           ) : recentTransactions.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
               <p className="text-lg font-medium">Nenhuma transação encontrada</p>
               <p className="text-sm mt-2">Comece registrando sua primeira transação!</p>
               <Button 
@@ -357,12 +357,12 @@ export function Dashboard({ onPageChange }: DashboardProps = {}) {
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      tx.type === 'income' ? 'bg-green-100' : 'bg-red-100'
+                      tx.type === 'income' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'
                     }`}>
                       {tx.type === 'income' ? (
-                        <ArrowUpRight className="w-5 h-5 text-green-600" />
+                        <ArrowUpRight className="w-5 h-5 text-green-600 dark:text-green-400" />
                       ) : (
-                        <ArrowDownRight className="w-5 h-5 text-red-600" />
+                        <ArrowDownRight className="w-5 h-5 text-red-600 dark:text-red-400" />
                       )}
                     </div>
                     <div>
@@ -377,7 +377,7 @@ export function Dashboard({ onPageChange }: DashboardProps = {}) {
                   </div>
                   <div className="text-right">
                     <p className={`font-semibold text-lg ${
-                      tx.type === 'income' ? 'text-green-600' : 'text-red-600'
+                      tx.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}>
                       {tx.type === 'income' ? '+' : '-'}{formatCurrency(Math.abs(tx.amount))}
                     </p>
@@ -392,12 +392,12 @@ export function Dashboard({ onPageChange }: DashboardProps = {}) {
        {/* Quick Actions */}
        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
          <Card 
-           className="cursor-pointer hover:shadow-md transition-shadow border-green-200 hover:border-green-300"
+           className="cursor-pointer hover:shadow-md transition-shadow border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700"
            onClick={() => openModal('income')}
          >
            <CardContent className="p-6 text-center">
-             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-               <ArrowUpRight className="w-6 h-6 text-green-600" />
+             <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+               <ArrowUpRight className="w-6 h-6 text-green-600 dark:text-green-400" />
              </div>
              <h3 className="font-medium">Nova Receita</h3>
              <p className="text-sm text-muted-foreground mt-1">Adicionar entrada de dinheiro</p>
@@ -405,12 +405,12 @@ export function Dashboard({ onPageChange }: DashboardProps = {}) {
          </Card>
 
          <Card 
-           className="cursor-pointer hover:shadow-md transition-shadow border-red-200 hover:border-red-300"
+           className="cursor-pointer hover:shadow-md transition-shadow border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700"
            onClick={() => openModal('expense')}
          >
            <CardContent className="p-6 text-center">
-             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-               <ArrowDownRight className="w-6 h-6 text-red-600" />
+             <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+               <ArrowDownRight className="w-6 h-6 text-red-600 dark:text-red-400" />
              </div>
              <h3 className="font-medium">Nova Despesa</h3>
              <p className="text-sm text-muted-foreground mt-1">Registrar um gasto</p>
@@ -418,12 +418,12 @@ export function Dashboard({ onPageChange }: DashboardProps = {}) {
          </Card>
 
          <Card 
-           className="cursor-pointer hover:shadow-md transition-shadow border-blue-200 hover:border-blue-300"
+           className="cursor-pointer hover:shadow-md transition-shadow border-blue-200 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-700"
            onClick={() => window.location.href = '/transactions'}
          >
            <CardContent className="p-6 text-center">
-             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-               <Tag className="w-6 h-6 text-blue-600" />
+             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+               <Tag className="w-6 h-6 text-blue-600 dark:text-blue-400" />
              </div>
              <h3 className="font-medium">Ver Todas</h3>
              <p className="text-sm text-muted-foreground mt-1">Histórico completo</p>
@@ -452,22 +452,22 @@ export function Dashboard({ onPageChange }: DashboardProps = {}) {
                      type="button"
                      variant="outline"
                      className={`h-20 flex flex-col items-center justify-center gap-2 ${
-                       transactionType === 'income' ? 'border-green-500 bg-green-50' : ''
+                       transactionType === 'income' ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20' : ''
                      }`}
                      onClick={() => setTransactionType('income')}
                    >
-                     <ArrowUpRight className="w-6 h-6 text-green-600" />
+                     <ArrowUpRight className="w-6 h-6 text-green-600 dark:text-green-400" />
                      <span className="font-medium">Receita</span>
                    </Button>
                    <Button
                      type="button"
                      variant="outline"
                      className={`h-20 flex flex-col items-center justify-center gap-2 ${
-                       transactionType === 'expense' ? 'border-red-500 bg-red-50' : ''
+                       transactionType === 'expense' ? 'border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/20' : ''
                      }`}
                      onClick={() => setTransactionType('expense')}
                    >
-                     <ArrowDownRight className="w-6 h-6 text-red-600" />
+                     <ArrowDownRight className="w-6 h-6 text-red-600 dark:text-red-400" />
                      <span className="font-medium">Despesa</span>
                    </Button>
                  </div>

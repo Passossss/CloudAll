@@ -104,9 +104,9 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F87B07] p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#F87B07] dark:bg-[#c85f05] p-4">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-3xl p-8 shadow-xl">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl p-8 shadow-xl">
           {/* Logo */}
           <div className="flex justify-center mb-6">
             <img src={finLogo} alt="Fin" className="w-16 h-16" />
@@ -114,16 +114,16 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
 
           {/* Título */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">App Fin</h1>
-            <h2 className="text-xl font-medium text-gray-900 mb-1">Criar sua conta</h2>
-            <p className="text-gray-600 text-sm">Preencha os dados para começar</p>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">App Fin</h1>
+            <h2 className="text-xl font-medium text-gray-900 dark:text-white mb-1">Criar sua conta</h2>
+            <p className="text-gray-600 dark:text-gray-300 text-sm">Preencha os dados para começar</p>
           </div>
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Nome completo */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nome completo</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome completo</label>
               <Input
                 type="text"
                 placeholder="Digite seu nome completo"
@@ -145,7 +145,7 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
               <Input
                 type="email"
                 placeholder="Digite seu email"
@@ -167,7 +167,7 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
 
             {/* Senha */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Senha</label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -202,7 +202,7 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
 
             {/* Confirmar senha */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar senha</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirmar senha</label>
               <div className="relative">
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
@@ -244,7 +244,7 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                 className="mt-0.5"
                 disabled={isLoading}
               />
-              <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed">
+              <label htmlFor="terms" className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
                 Eu concordo com os{" "}
                 <Button type="button" variant="link" className="p-0 h-auto text-sm text-[#F87B07] hover:text-[#f87b07]/80">
                   Termos de Uso
@@ -276,16 +276,16 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">ou</span>
+              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">ou</span>
             </div>
           </div>
 
           {/* Link para Login */}
           <div className="text-center">
-            <span className="text-gray-600 text-sm">Já tem uma conta? </span>
+            <span className="text-gray-600 dark:text-gray-300 text-sm">Já tem uma conta? </span>
             <Button
               type="button"
               variant="link"

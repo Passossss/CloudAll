@@ -18,7 +18,41 @@ const azuresqlRoutes = require('./routes/azuresqlRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(helmet());
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:5173', 
+  'http://localhost:3000',
+  'http://localhost:5174', // FinAdm
+];
+
+// Configurar CORS ANTES de outros middlewares
+const corsOptions = {
+  origin: function(origin, callback) {
+    // Permitir requisições sem origin (ex: mobile apps, Postman)
+    if (!origin) return callback(null, true);
+    
+    // Permitir se estiver na lista de origins permitidas
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS bloqueado para origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Accept-Language', 'X-Requested-With'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+
+// Aplicar CORS
+app.use(cors(corsOptions));
+
+// Configurar Helmet para não interferir com CORS
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+}));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -26,30 +60,6 @@ const limiter = rateLimit({
   message: 'Muitas requisições deste IP, tente novamente em 15 minutos.'
 });
 app.use(limiter);
-
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5173', 
-  'http://localhost:3000',
-  'http://localhost:5174', // FinAdm
-  'http://localhost:3000' // FinAdm (se usar porta 3000)
-];
-app.use(cors({
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      return callback(null, true);
-    } else {
-      return callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Accept-Language'],
-  credentials: true,
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-}));
-
-app.options('*', cors());
 
 app.use(morgan('combined'));
 
@@ -69,12 +79,24 @@ app.use('/api/azuresql', azuresqlRoutes);
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   
-  if (err.type === 'entity.parse.failed') {
-    return res.status(400).json({ 
-      error: 'Invalid JSON payload' 
+  // CORS error
+  if (err.message && err.message.includes('CORS')) {
+    return res.status(403).json({
+      error: 'CORS Error',
+      message: 'Origin not allowed by CORS policy',
+      timestamp: new Date().toISOString()
     });
   }
   
+  // JSON parse error
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ 
+      error: 'Invalid JSON payload',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  // Generic error
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
     timestamp: new Date().toISOString()

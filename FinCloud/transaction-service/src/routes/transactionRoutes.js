@@ -2,7 +2,17 @@
 const Joi = require('joi');
 const { getTransactionRepository } = require('../config/database');
 
+// Clean Architecture - Use Cases
+const CreateTransactionUseCase = require('../application/features/create-transaction/CreateTransactionUseCase');
+const UpdateTransactionUseCase = require('../application/features/update-transaction/UpdateTransactionUseCase');
+const TransactionRepository = require('../infrastructure/repositories/TransactionRepository');
+
 const router = express.Router();
+
+// Initialize Clean Architecture components
+const transactionRepository = new TransactionRepository();
+const createTransactionUseCase = new CreateTransactionUseCase(transactionRepository);
+const updateTransactionUseCase = new UpdateTransactionUseCase(transactionRepository);
 
 const { ObjectId } = require('mongodb');
 
@@ -72,15 +82,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Validation error', details: error.details });
     }
 
-    if (value.type === 'expense' && value.amount > 0) {
-      value.amount = -Math.abs(value.amount);
-    } else if (value.type === 'income' && value.amount < 0) {
-      value.amount = Math.abs(value.amount);
-    }
-
-    const transactionRepo = getTransactionRepository();
-    const transaction = transactionRepo.create(value);
-    await transactionRepo.save(transaction);
+    // Use Clean Architecture Use Case
+    const transaction = await createTransactionUseCase.execute(value);
 
     res.status(201).json({
       message: 'Transaction created successfully',
@@ -96,23 +99,24 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 50, userId, category, type } = req.query;
-    const transactionRepo = getTransactionRepository();
+    // Use Clean Architecture Repository
     const filter = {};
     if (userId) filter.userId = userId;
     if (category) filter.category = category;
     if (type) filter.type = type;
 
-    const take = Math.min(200, parseInt(limit));
-    const skip = (parseInt(page) - 1) * take;
-
-    const [transactions, total] = await Promise.all([
-      transactionRepo.find({ where: filter, order: { date: 'DESC' }, take, skip }),
-      transactionRepo.count({ where: filter })
-    ]);
+    const result = await transactionRepository.findAll(filter, { page, limit });
 
     res.json({
       message: 'Transactions retrieved',
-      data: { transactions, pagination: { current: parseInt(page), pages: Math.ceil(total / take), total } }
+      data: {
+        transactions: result.transactions,
+        pagination: {
+          current: result.page,
+          pages: Math.ceil(result.total / result.limit),
+          total: result.total
+        }
+      }
     });
   } catch (error) {
     console.error('List transactions error:', error);
@@ -125,33 +129,21 @@ router.get('/user/:userId', async (req, res) => {
     const { userId } = req.params;
     const { page = 1, limit = 20, category, type, startDate, endDate } = req.query;
     
-    const transactionRepo = getTransactionRepository();
-    const filter = { userId };
+    // Use Clean Architecture Repository
+    const filters = {};
+    if (category) filters.category = category;
+    if (type) filters.type = type;
+    if (startDate) filters.startDate = startDate;
+    if (endDate) filters.endDate = endDate;
 
-    if (category) filter.category = category;
-    if (type) filter.type = type;
-    if (startDate || endDate) {
-      filter.date = {};
-      if (startDate) filter.date.$gte = new Date(startDate);
-      if (endDate) filter.date.$lte = new Date(endDate);
-    }
-
-    const skip = (page - 1) * limit;
-    const transactions = await transactionRepo.find({
-      where: filter,
-      order: { date: 'DESC' },
-      take: parseInt(limit),
-      skip: skip
-    });
-
-    const total = await transactionRepo.count({ where: filter });
+    const result = await transactionRepository.findByUserId(userId, filters, { page, limit });
 
     res.json({
-      transactions,
+      transactions: result.transactions,
       pagination: {
-        current: parseInt(page),
-        pages: Math.ceil(total / limit),
-        total
+        current: result.page,
+        pages: Math.ceil(result.total / result.limit),
+        total: result.total
       }
     });
   } catch (error) {
@@ -163,9 +155,8 @@ router.get('/user/:userId', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const transactionRepo = getTransactionRepository();
-    
-    const transaction = await findTransactionById(transactionRepo, id);
+    // Use Clean Architecture Repository
+    const transaction = await transactionRepository.findById(id);
     if (!transaction) {
       return res.status(404).json({ error: 'Transaction not found', message: 'Transação não encontrada' });
     }
@@ -185,30 +176,21 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: 'Validation error', details: upErr.details });
     }
 
-    // Normalize amount sign according to type if provided
-    if (upValue.type === 'expense' && upValue.amount && upValue.amount > 0) {
-      upValue.amount = -Math.abs(upValue.amount);
-    } else if (upValue.type === 'income' && upValue.amount && upValue.amount < 0) {
-      upValue.amount = Math.abs(upValue.amount);
-    }
+    // Use Clean Architecture Use Case
+    const updated = await updateTransactionUseCase.execute(id, upValue);
 
-    const transactionRepo = getTransactionRepository();
-    const transaction = await findTransactionById(transactionRepo, id);
-
-    if (!transaction) {
+    if (!updated) {
       return res.status(404).json({ error: 'Transaction not found', message: 'Transação não encontrada' });
     }
-
-    // Use the stored id if different
-    const updateId = transaction.id || id;
-    await transactionRepo.update({ id: updateId }, upValue);
-    const updated = await findTransactionById(transactionRepo, id);
 
     res.json({
       message: 'Transaction updated successfully',
       data: { transaction: updated }
     });
   } catch (error) {
+    if (error.message === 'Transaction not found') {
+      return res.status(404).json({ error: 'Transaction not found', message: 'Transação não encontrada' });
+    }
     console.error('Update transaction error:', error);
     res.status(500).json({ error: 'Internal server error', message: 'Erro interno do servidor' });
   }
@@ -217,14 +199,11 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const transactionRepo = getTransactionRepository();
-    
-    const transaction = await findTransactionById(transactionRepo, id);
-    if (!transaction) {
+    // Use Clean Architecture Repository
+    const deleted = await transactionRepository.delete(id);
+    if (!deleted) {
       return res.status(404).json({ error: 'Transaction not found', message: 'Transação não encontrada' });
     }
-
-    await transactionRepo.delete({ id: transaction.id || id });
 
     res.json({ message: 'Transaction deleted successfully', message_pt: 'Transação excluída com sucesso' });
   } catch (error) {
@@ -258,13 +237,13 @@ router.get('/user/:userId/summary', async (req, res) => {
         startDate.setDate(endDate.getDate() - 30);
     }
 
-    const transactionRepo = getTransactionRepository();
-    const transactions = await transactionRepo.find({
-      where: {
-        userId,
-        date: { $gte: startDate, $lte: endDate }
-      }
-    });
+    // Use Clean Architecture Repository
+    const result = await transactionRepository.findByUserId(userId, {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    }, { page: 1, limit: 10000 });
+    
+    const transactions = result.transactions;
 
     const summary = transactions.reduce((acc, t) => {
       if (!acc[t.type]) {
@@ -314,13 +293,13 @@ router.get('/user/:userId/categories', async (req, res) => {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - parseInt(period.replace('d', '')));
 
-    const transactionRepo = getTransactionRepository();
-    const transactions = await transactionRepo.find({
-      where: {
-        userId,
-        date: { $gte: startDate, $lte: endDate }
-      }
-    });
+    // Use Clean Architecture Repository
+    const result = await transactionRepository.findByUserId(userId, {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    }, { page: 1, limit: 10000 });
+    
+    const transactions = result.transactions;
 
     const categoryData = transactions.reduce((acc, t) => {
       if (!acc[t.category]) {
