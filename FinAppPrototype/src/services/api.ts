@@ -4,7 +4,7 @@ const API_BASE_URL = (typeof import.meta !== 'undefined' && (import.meta as any)
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 5000, // Reduzido para 5s para não travar muito quando backend estiver offline
   headers: {
     'Content-Type': 'application/json',
   },
@@ -89,13 +89,65 @@ export interface UserStats {
 
 export const authApi = {
   login: async (email: string, password: string) => {
-    const response = await api.post('/users/login', { email, password });
-    return response.data;
+    try {
+      const response = await api.post('/users/login', { email, password });
+      const data = response.data;
+      
+      // O backend pode retornar { user, token } ou { data: { user, token } }
+      // Normalizar para sempre ter { user, token }
+      if (data.data) {
+        return {
+          user: data.data.user || data.user,
+          token: data.data.token || data.token,
+        };
+      }
+      
+      return {
+        user: data.user,
+        token: data.token,
+      };
+    } catch (error: any) {
+      // Melhor tratamento de erro 401
+      if (error.response?.status === 401) {
+        const errorMessage = error.response?.data?.message || 'Email ou senha incorretos';
+        throw new Error(errorMessage);
+      }
+      throw error;
+    }
   },
 
   register: async (data: { email: string; password: string; name: string; age?: number }) => {
-    const response = await api.post('/users/register', data);
-    return response.data;
+    try {
+      const response = await api.post('/users/register', data);
+      const responseData = response.data;
+      
+      // O backend retorna { user, token } diretamente ou dentro de { data }
+      if (responseData.data) {
+        return {
+          user: responseData.data.user || responseData.user,
+          token: responseData.data.token || responseData.token,
+        };
+      }
+      
+      return {
+        user: responseData.user,
+        token: responseData.token,
+      };
+    } catch (error: any) {
+      // Melhor tratamento de erros de registro
+      if (error.response?.status === 409) {
+        throw new Error(error.response?.data?.message || 'Usuário já cadastrado com este email');
+      }
+      if (error.response?.status === 400) {
+        const details = error.response?.data?.details;
+        if (details && Array.isArray(details)) {
+          const message = details.map((d: any) => d.message).join(', ');
+          throw new Error(message || 'Dados inválidos');
+        }
+        throw new Error(error.response?.data?.message || 'Dados inválidos');
+      }
+      throw error;
+    }
   },
 };
 
@@ -114,29 +166,6 @@ export const userApi = {
     const response = await api.get(`/users/stats/${userId}`);
     return response.data;
   },
-
-  listUsers: async () => {
-    const response = await api.get('/users');
-    return response.data;
-  },
-
-  createUser: async (data: any) => {
-    // The user service exposes registration at /users/register
-    const response = await api.post('/users/register', data);
-    return response.data;
-  },
-
-  updateUser: async (userId: string, data: any) => {
-    // user-service exposes profile update at /users/profile/:id
-    const response = await api.put(`/users/profile/${userId}`, data);
-    return response.data;
-  },
-
-  deleteUser: async (userId: string) => {
-    // user-service exposes delete (soft-delete) at /users/profile/:id
-    const response = await api.delete(`/users/profile/${userId}`);
-    return response.data;
-  },
 };
 
 export const transactionApi = {
@@ -152,12 +181,6 @@ export const transactionApi = {
     }
   ) => {
     const response = await api.get(`/transactions/user/${userId}`, { params });
-    return response.data;
-  },
-
-  // List ALL transactions (public endpoint proxied by BFF)
-  listAll: async (params?: { page?: number; limit?: number }) => {
-    const response = await api.get('/transactions', { params });
     return response.data;
   },
 
@@ -224,26 +247,76 @@ export const aggregationApi = {
 };
 
 export function normalizeUserProfile(apiResponse: any): User {
-  const user = apiResponse.user || apiResponse;
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    age: user.age,
-    isActive: user.isActive ?? true,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-    profile: {
-      monthlyIncome: user.profile?.monthly_income ?? user.profile?.monthlyIncome ?? 0,
-      financialGoals: user.profile?.financial_goals ?? user.profile?.financialGoals ?? '',
-      spendingLimit: user.profile?.spending_limit ?? user.profile?.spendingLimit ?? 0,
-    },
-  };
+  try {
+    const user = apiResponse.user || apiResponse;
+    
+    // Garantir que todos os campos obrigatórios existam
+    return {
+      id: user.id || user._id || '',
+      email: user.email || '',
+      name: user.name || user.fullName || 'Usuário',
+      age: user.age,
+      isActive: user.isActive ?? user.is_active ?? true,
+      createdAt: user.createdAt || user.created_at || new Date().toISOString(),
+      updatedAt: user.updatedAt || user.updated_at || new Date().toISOString(),
+      profile: {
+        monthlyIncome: user.profile?.monthly_income ?? user.profile?.monthlyIncome ?? user.monthlyIncome ?? 0,
+        financialGoals: user.profile?.financial_goals ?? user.profile?.financialGoals ?? user.financialGoals ?? '',
+        spendingLimit: user.profile?.spending_limit ?? user.profile?.spendingLimit ?? user.spendingLimit ?? 0,
+      },
+    };
+  } catch (error) {
+    console.error('Erro ao normalizar perfil do usuário:', error);
+    // Retornar um objeto padrão em caso de erro
+    return {
+      id: '',
+      email: '',
+      name: 'Usuário',
+      isActive: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      profile: {
+        monthlyIncome: 0,
+        financialGoals: '',
+        spendingLimit: 0,
+      },
+    };
+  }
 }
 
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    return error.response?.data?.message || error.message || 'Erro ao processar requisição';
+    // Verificar se é erro de conexão (backend offline)
+    if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
+      return 'Não foi possível conectar ao servidor. Verifique se o backend está rodando.';
+    }
+    
+    // Verificar timeout
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      return 'O servidor demorou muito para responder. Tente novamente.';
+    }
+    
+    // Mensagem do servidor
+    const serverMessage = error.response?.data?.message || error.response?.data?.error;
+    if (serverMessage) {
+      return serverMessage;
+    }
+    
+    // Status code específico
+    if (error.response?.status === 401) {
+      return 'Email ou senha incorretos';
+    }
+    if (error.response?.status === 409) {
+      return 'Usuário já cadastrado com este email';
+    }
+    if (error.response?.status === 400) {
+      return 'Dados inválidos. Verifique os campos preenchidos.';
+    }
+    if (error.response?.status === 503) {
+      return 'Serviço temporariamente indisponível. Tente novamente em alguns instantes.';
+    }
+    
+    return error.message || 'Erro ao processar requisição';
   }
   if (error instanceof Error) {
     return error.message;

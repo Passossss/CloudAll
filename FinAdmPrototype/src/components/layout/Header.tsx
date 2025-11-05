@@ -174,20 +174,6 @@ export function Header({ onToggleSidebar, isSidebarCollapsed, onPageChange }: He
               
               <DropdownMenuSeparator />
               
-              <DropdownMenuItem>
-                <LogIn className="mr-2 h-4 w-4" />
-                <span>Login</span>
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem>
-                <UserPlus className="mr-2 h-4 w-4" />
-                <span>Criar Conta</span>
-              </DropdownMenuItem>
-              
-              <DropdownMenuItem>
-                <KeyRound className="mr-2 h-4 w-4" />
-                <span>Esqueceu a Senha</span>
-              </DropdownMenuItem>
               
               <DropdownMenuSeparator />
               

@@ -124,10 +124,10 @@ export function PermissionManagement() {
       </div>
       
       <div className="flex gap-2 pt-4">
-        <Button className="flex-1 bg-orange-500 hover:bg-orange-600">
+        <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg">
           {editingPermission ? 'Salvar Alterações' : 'Criar Permissão'}
         </Button>
-        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
+        <Button onClick={() => setIsDialogOpen(false)} className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold">
           Cancelar
         </Button>
       </div>

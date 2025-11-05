@@ -149,13 +149,22 @@ export function MenuManagement() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      ativo: { color: 'bg-green-100 text-green-700', label: 'Ativo' },
-      fixado: { color: 'bg-blue-100 text-blue-700', label: 'Fixado' },
-      ocultar: { color: 'bg-gray-100 text-gray-700', label: 'Ocultar' }
+      ativo: { 
+        color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', 
+        label: 'Ativo' 
+      },
+      fixado: { 
+        color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300', 
+        label: 'Fixado' 
+      },
+      ocultar: { 
+        color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', 
+        label: 'Ocultar' 
+      }
     };
     const config = statusConfig[status as keyof typeof statusConfig];
     return (
-      <Badge className={`${config.color} hover:${config.color}`}>
+      <Badge className={`${config.color}`}>
         {config.label}
       </Badge>
     );
@@ -163,9 +172,9 @@ export function MenuManagement() {
 
   const getAccessBadge = (access: string) => {
     return access === 'Admin' ? (
-      <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Admin</Badge>
+      <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">Admin</Badge>
     ) : (
-      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">Todos</Badge>
+      <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Todos</Badge>
     );
   };
 
@@ -223,10 +232,10 @@ export function MenuManagement() {
         </Select>
       </div>
       <div className="flex gap-2 pt-4">
-        <Button className="flex-1 bg-orange-500 hover:bg-orange-600">
+        <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg">
           {editingItem ? 'Salvar Alterações' : 'Criar Menu'}
         </Button>
-        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
+        <Button onClick={() => setIsDialogOpen(false)} className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold">
           Cancelar
         </Button>
       </div>
@@ -237,12 +246,12 @@ export function MenuManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Gerenciar Menus</h1>
-          <p className="text-gray-600">Configure os menus do sistema Fin</p>
+          <h1 className="text-2xl font-semibold text-foreground">Gerenciar Menus</h1>
+          <p className="text-sm text-muted-foreground mt-1">Configure os menus do sistema Fin</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleAddItem} className="bg-orange-500 hover:bg-orange-600">
+            <Button onClick={handleAddItem} className="bg-orange-500 hover:bg-orange-600 text-white font-bold shadow-lg">
               <Plus className="w-4 h-4 mr-2" />
               Novo Menu
             </Button>
@@ -258,10 +267,10 @@ export function MenuManagement() {
         </Dialog>
       </div>
 
-      <Card className="bg-white shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle>Lista de Menus</CardTitle>
-          <p className="text-sm text-gray-600 mt-1">{menuItems.length} itens de menu configurados</p>
+          <p className="text-sm text-muted-foreground mt-1">{menuItems.length} itens de menu configurados</p>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -285,26 +294,26 @@ export function MenuManagement() {
                   return (
                     <TableRow key={item.id}>
                       <TableCell>
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <IconComponent className="w-4 h-4 text-gray-600" />
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
+                          <IconComponent className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell className="text-gray-600">{item.route}</TableCell>
+                      <TableCell className="font-medium text-foreground">{item.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.route}</TableCell>
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell>
                         <Switch checked={item.status === 'fixado'} disabled />
                       </TableCell>
-                      <TableCell className="text-gray-600">{item.visibleTo}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.visibleTo}</TableCell>
                       <TableCell>{getAccessBadge(item.access)}</TableCell>
-                      <TableCell className="text-gray-600">{item.order}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.order}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEditItem(item)}
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -312,7 +321,7 @@ export function MenuManagement() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteItem(item.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -328,26 +337,26 @@ export function MenuManagement() {
       </Card>
 
       {/* Permission Matrix for Menus */}
-      <Card className="bg-white shadow-sm">
+      <Card>
         <CardHeader>
           <CardTitle>Permissões por Perfil</CardTitle>
-          <p className="text-sm text-gray-600">Configure quais menus cada perfil pode acessar</p>
+          <p className="text-sm text-muted-foreground">Configure quais menus cada perfil pode acessar</p>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-900">Menu</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-900">Admin</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-900">Usuário</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-900">Convidado</th>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 px-4 font-medium text-foreground">Menu</th>
+                  <th className="text-center py-3 px-4 font-medium text-foreground">Admin</th>
+                  <th className="text-center py-3 px-4 font-medium text-foreground">Usuário</th>
+                  <th className="text-center py-3 px-4 font-medium text-foreground">Convidado</th>
                 </tr>
               </thead>
               <tbody>
                 {menuItems.map((item) => (
-                  <tr key={item.id} className="border-b border-gray-100">
-                    <td className="py-3 px-4 font-medium text-gray-900">{item.name}</td>
+                  <tr key={item.id} className="border-b border-border hover:bg-muted/50">
+                    <td className="py-3 px-4 font-medium text-foreground">{item.name}</td>
                     <td className="py-3 px-4 text-center">
                       <Switch checked={item.permissions.admin} />
                     </td>

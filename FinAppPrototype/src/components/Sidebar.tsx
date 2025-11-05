@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Home, Users, Tag, DollarSign, BarChart3, CreditCard, Pin, Grip, ChevronLeft, ChevronRight, UserCog, Settings2, Menu } from "lucide-react";
+import { Home, Tag, DollarSign, BarChart3, CreditCard, Pin, Grip, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
 import { Separator } from "./ui/separator";
 import { useUser } from "../contexts/UserContext";
@@ -23,12 +23,9 @@ export function Sidebar({ currentPage, onPageChange, isCollapsed, onCollapsedCha
   const { isAdmin } = useUser();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([
     { id: "dashboard", label: "Dashboard", icon: Home, isPinned: true, adminOnly: false },
-    { id: "users", label: "Cadastro de Usuário", icon: Users, isPinned: true, adminOnly: false },
-    { id: "transactions", label: "Transações", icon: DollarSign, isPinned: true, adminOnly: false },
+    { id: "transactions", label: "Minhas Transações", icon: DollarSign, isPinned: true, adminOnly: false },
     { id: "categories", label: "Categorias", icon: Tag, isPinned: false, adminOnly: false },
-    { id: "user-management", label: "Gerenciar Usuários", icon: UserCog, isPinned: false, adminOnly: true },
-    { id: "menu-management", label: "Gerenciar Menus", icon: Menu, isPinned: false, adminOnly: true },
-    { id: "reports", label: "Relatórios", icon: BarChart3, isPinned: false, adminOnly: false },
+    { id: "reports", label: "Meus Relatórios", icon: BarChart3, isPinned: false, adminOnly: false },
     { id: "cards", label: "Cartões", icon: CreditCard, isPinned: false, adminOnly: false },
   ]);
 

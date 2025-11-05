@@ -28,7 +28,6 @@ export function FinSidebar({ currentPage, onPageChange, isCollapsed, onToggleCol
   const [menuItems, setMenuItems] = useState<MenuItem[]>([
     { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/dashboard', pinned: true },
     { id: 'transactions', label: 'Transações', icon: DollarSign, href: '/transactions', pinned: true },
-    { id: 'categories', label: 'Categorias', icon: Tag, href: '/categories', pinned: true },
     { id: 'users', label: 'Cadastro de Usuário', icon: Users, href: '/users', pinned: false },
     { id: 'reports', label: 'Relatórios', icon: BarChart3, href: '/reports', pinned: false },
     { id: 'cards', label: 'Cartões', icon: CreditCard, href: '/cards', pinned: false },

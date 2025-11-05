@@ -24,6 +24,8 @@ export type {
   UpdateTransactionData,
   TransactionFilters,
   TransactionListResponse,
+  UserTransactionSummary,
+  CategorySummary,
 } from './transactionService';
 
 export { reportService } from './reportService';

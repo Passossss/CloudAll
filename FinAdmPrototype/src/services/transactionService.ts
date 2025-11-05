@@ -198,11 +198,27 @@ class TransactionService {
     
     const params = new URLSearchParams();
     
-    if (filters?.from) {
-      params.append('from', filters.from);
-    }
-    if (filters?.to) {
-      params.append('to', filters.to);
+    // Se tiver from e to, converter para período aproximado ou usar diretamente
+    if (filters?.from && filters?.to) {
+      // O backend espera startDate/endDate ou period
+      // Por enquanto, vamos usar period=30d como padrão e deixar o backend calcular
+      // Ou podemos tentar calcular o período baseado nas datas
+      const fromDate = new Date(filters.from);
+      const toDate = new Date(filters.to);
+      const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff <= 7) {
+        params.append('period', '7d');
+      } else if (daysDiff <= 30) {
+        params.append('period', '30d');
+      } else if (daysDiff <= 90) {
+        params.append('period', '90d');
+      } else {
+        params.append('period', '1y');
+      }
+    } else {
+      // Padrão: últimos 30 dias
+      params.append('period', '30d');
     }
 
     const queryString = params.toString();
@@ -212,6 +228,16 @@ class TransactionService {
     // Formato de resposta: { period, summary: { income, expenses, balance, total_transactions }, categories }
     const summary = response.data.summary;
     
+    // Adaptar categorias do formato do backend
+    const categoriesList = response.data.categories || [];
+    const adaptedCategories = categoriesList.map((cat: any) => ({
+      categoryId: cat._id || cat.category || cat.categoryId || 'other',
+      categoryName: cat.category || cat.categoryName || 'Outros',
+      total: cat.total_amount || cat.total || 0,
+      count: cat.count || 0,
+      percentage: 0, // Pode ser calculado depois
+    }));
+    
     // Adaptar para formato esperado pelo TransactionStats
     return {
       summary: {
@@ -220,7 +246,7 @@ class TransactionService {
         balance: summary.balance || 0,
         count: summary.total_transactions || 0,
       },
-      byCategory: response.data.categories || [],
+      byCategory: adaptedCategories,
       byAccount: [],
     };
   }

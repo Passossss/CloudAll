@@ -28,19 +28,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const loadUser = async () => {
       try {
         const storedUser = authService.getCurrentUser();
-        if (storedUser && authService.isAuthenticated()) {
+        const hasToken = authService.isAuthenticated();
+        
+        if (storedUser && hasToken) {
+          console.log('[AuthContext] Usuário encontrado no localStorage:', storedUser.email);
           setUser(storedUser);
-          // Tentar atualizar os dados do servidor
+          
+          // Tentar atualizar os dados do servidor (apenas se tiver token válido)
           try {
             const freshUser = await authService.getCurrentUserProfile();
+            console.log('[AuthContext] Perfil atualizado do servidor');
             setUser(freshUser);
           } catch (error) {
-            console.error('Erro ao atualizar perfil do usuário:', error);
-            // Manter usuário do localStorage se falhar
+            console.warn('[AuthContext] Não foi possível atualizar perfil do servidor, usando localStorage');
+            // Se falhar ao buscar do servidor, manter usuário do localStorage
+            // Isso evita deslogar usuários desnecessariamente quando o backend está offline
           }
+        } else {
+          console.log('[AuthContext] Nenhum usuário autenticado encontrado');
+          setUser(null);
         }
       } catch (error) {
-        console.error('Erro ao carregar usuário:', error);
+        console.error('[AuthContext] Erro ao carregar usuário:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -51,19 +61,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('[AuthContext] Iniciando login para:', email);
       const response = await authService.login({ email, password });
+      console.log('[AuthContext] Login bem-sucedido. Role:', response.user.role);
       setUser(response.user);
     } catch (error) {
-      console.error('Erro ao fazer login:', error);
+      console.error('[AuthContext] Erro ao fazer login:', error);
       throw error;
     }
   };
 
   const logout = async () => {
     try {
+      console.log('[AuthContext] Iniciando logout');
       await authService.logout();
+      console.log('[AuthContext] Logout concluído');
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      console.error('[AuthContext] Erro ao fazer logout:', error);
     } finally {
       setUser(null);
     }

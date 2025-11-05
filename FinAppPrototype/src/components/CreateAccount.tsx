@@ -1,9 +1,9 @@
+import React, { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Checkbox } from "./ui/checkbox";
 import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
-import { useState } from "react";
-import finLogo from "figma:asset/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png";
+import finLogo from "figma:asset/cb6e84f9267ba7d9df65b2df986e7030850c04ce.png"; 
 import { useUser } from "../contexts/UserContext";
 import { toast } from "sonner";
 
@@ -14,7 +14,7 @@ interface CreateAccountProps {
 export function CreateAccount({ onPageChange }: CreateAccountProps) {
   const { register } = useUser();
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);        
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -23,6 +23,85 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
     confirmPassword: ""
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [errors, setErrors] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
+
+  const validateForm = () => {
+    const newErrors = { fullName: "", email: "", password: "", confirmPassword: "" };
+    let isValid = true;
+
+    // Validar nome
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = "Nome completo é obrigatório";
+      isValid = false;
+    } else if (formData.fullName.trim().length < 3) {
+      newErrors.fullName = "Nome deve ter pelo menos 3 caracteres";
+      isValid = false;
+    }
+
+    // Validar email
+    if (!formData.email) {
+      newErrors.email = "Email é obrigatório";
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Email inválido";
+      isValid = false;
+    }
+
+    // Validar senha
+    if (!formData.password) {
+      newErrors.password = "Senha é obrigatória";
+      isValid = false;
+    } else if (formData.password.length < 6) {
+      newErrors.password = "A senha deve ter pelo menos 6 caracteres";
+      isValid = false;
+    }
+
+    // Validar confirmação de senha
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Confirme sua senha";
+      isValid = false;
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "As senhas não coincidem";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    if (!acceptTerms) {
+      toast.error('Você precisa aceitar os termos de uso');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await register({
+        email: formData.email.trim(),
+        password: formData.password,
+        name: formData.fullName.trim(),
+      });
+      toast.success('Conta criada com sucesso!');
+      onPageChange('dashboard');
+    } catch (error: any) {
+      // Error already handled by useAuth hook
+      console.error('Erro ao criar conta:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F87B07] p-4">
@@ -41,59 +120,52 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
           </div>
 
           {/* Formulário */}
-          <form onSubmit={async (e) => {
-            e.preventDefault();
-            
-            if (formData.password !== formData.confirmPassword) {
-              toast.error('As senhas não coincidem');
-              return;
-            }
-
-            if (formData.password.length < 6) {
-              toast.error('A senha deve ter pelo menos 6 caracteres');
-              return;
-            }
-
-            setIsLoading(true);
-            try {
-              await register({
-                email: formData.email,
-                password: formData.password,
-                name: formData.fullName,
-              });
-              onPageChange('dashboard');
-            } catch (error) {
-              // Error already handled by useAuth hook
-            } finally {
-              setIsLoading(false);
-            }
-          }} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Nome completo */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Nome completo</label>
               <Input
                 type="text"
                 placeholder="Digite seu nome completo"
                 value={formData.fullName}
-                onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
-                className="w-full h-12 px-4 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, fullName: e.target.value }));
+                  setErrors(prev => ({ ...prev, fullName: "" }));
+                }}
+                className={`w-full h-12 px-4 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20 ${
+                  errors.fullName ? 'border border-red-500' : ''
+                }`}
                 required
                 disabled={isLoading}
               />
+              {errors.fullName && (
+                <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>
+              )}
             </div>
 
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
               <Input
                 type="email"
                 placeholder="Digite seu email"
                 value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                className="w-full h-12 px-4 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, email: e.target.value }));
+                  setErrors(prev => ({ ...prev, email: "" }));
+                }}
+                className={`w-full h-12 px-4 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20 ${
+                  errors.email ? 'border border-red-500' : ''
+                }`}
                 required
                 disabled={isLoading}
               />
+              {errors.email && (
+                <p className="text-sm text-red-600 mt-1">{errors.email}</p>
+              )}
             </div>
 
+            {/* Senha */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
               <div className="relative">
@@ -101,8 +173,13 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                   type={showPassword ? "text" : "password"}
                   placeholder="Digite sua senha"
                   value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full h-12 px-4 pr-12 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, password: e.target.value }));
+                    setErrors(prev => ({ ...prev, password: "" }));
+                  }}
+                  className={`w-full h-12 px-4 pr-12 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20 ${
+                    errors.password ? 'border border-red-500' : ''
+                  }`}
                   required
                   minLength={6}
                   disabled={isLoading}
@@ -118,8 +195,12 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                   {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                 </Button>
               </div>
+              {errors.password && (
+                <p className="text-sm text-red-600 mt-1">{errors.password}</p>
+              )}
             </div>
 
+            {/* Confirmar senha */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar senha</label>
               <div className="relative">
@@ -127,8 +208,13 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirme sua senha"
                   value={formData.confirmPassword}
-                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  className="w-full h-12 px-4 pr-12 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20"
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, confirmPassword: e.target.value }));
+                    setErrors(prev => ({ ...prev, confirmPassword: "" }));
+                  }}
+                  className={`w-full h-12 px-4 pr-12 bg-gray-50 border-0 rounded-lg focus:bg-white focus:ring-2 focus:ring-primary/20 ${
+                    errors.confirmPassword ? 'border border-red-500' : ''
+                  }`}
                   required
                   minLength={6}
                   disabled={isLoading}
@@ -144,10 +230,14 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
                   {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
                 </Button>
               </div>
+              {errors.confirmPassword && (
+                <p className="text-sm text-red-600 mt-1">{errors.confirmPassword}</p>
+              )}
             </div>
 
+            {/* Termos */}
             <div className="flex items-start space-x-2 py-2">
-              <Checkbox 
+              <Checkbox
                 id="terms"
                 checked={acceptTerms}
                 onCheckedChange={setAcceptTerms}
@@ -166,6 +256,7 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
               </label>
             </div>
 
+            {/* Botão Criar Conta */}
             <Button 
               type="submit" 
               className="w-full h-12 bg-[#F87B07] hover:bg-[#f87b07]/90 text-white font-medium rounded-lg"
@@ -192,27 +283,15 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
             </div>
           </div>
 
-          {/* Google Button */}
-          <Button 
-            variant="outline" 
-            className="w-full h-12 border-gray-200 hover:bg-gray-50 rounded-lg"
-          >
-            <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
-            Continuar com Google
-          </Button>
-
-          {/* Login Link */}
-          <div className="text-center mt-6">
+          {/* Link para Login */}
+          <div className="text-center">
             <span className="text-gray-600 text-sm">Já tem uma conta? </span>
-            <Button 
-              variant="link" 
+            <Button
+              type="button"
+              variant="link"
               className="p-0 h-auto text-sm text-[#F87B07] hover:text-[#f87b07]/80"
               onClick={() => onPageChange('login')}
+              disabled={isLoading}
             >
               Fazer login
             </Button>
@@ -221,10 +300,11 @@ export function CreateAccount({ onPageChange }: CreateAccountProps) {
 
         {/* Botão Voltar */}
         <div className="text-center mt-6">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => onPageChange('login')}
             className="gap-2 text-white hover:bg-white/10"
+            disabled={isLoading}
           >
             <ArrowLeft className="h-4 w-4" />
             Voltar para o Login

@@ -78,12 +78,6 @@ export function FinDashboard({ onPageChange }: FinDashboardProps) {
           </p>
         </div>
         <div className="flex gap-2">
-          {isAdmin && (
-            <Button variant="outline" className="border-primary/20 text-primary hover:bg-primary/10">
-              <Settings className="w-4 h-4 mr-2" />
-              Gerenciar Sistema
-            </Button>
-          )}
           <Button 
             className="bg-primary hover:bg-primary/90"
             onClick={() => onPageChange?.('transactions')}

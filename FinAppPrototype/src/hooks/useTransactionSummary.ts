@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { transactionApi, TransactionSummary, getErrorMessage } from '../services/api';
 
 export function useTransactionSummary(userId: string, period: string = '30d') {
@@ -6,26 +6,31 @@ export function useTransactionSummary(userId: string, period: string = '30d') {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchSummary = async () => {
-      if (!userId) return;
+  const fetchSummary = useCallback(async () => {
+    if (!userId) return;
 
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
-      try {
-        const data = await transactionApi.getSummary(userId, period);
-        setSummary(data);
-      } catch (err) {
-        const message = getErrorMessage(err);
-        setError(message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSummary();
+    try {
+      const data = await transactionApi.getSummary(userId, period);
+      setSummary(data);
+    } catch (err) {
+      const message = getErrorMessage(err);
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
   }, [userId, period]);
 
-  return { summary, isLoading, error };
+  useEffect(() => {
+    fetchSummary();
+  }, [fetchSummary]);
+
+  return { 
+    summary, 
+    isLoading, 
+    error, 
+    refetch: fetchSummary 
+  };
 }

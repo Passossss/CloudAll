@@ -2,9 +2,6 @@ import { useState, useEffect } from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { Dashboard } from "./components/Dashboard";
-import { UserRegistration } from "./components/UserRegistration";
-import { UserManagement } from "./components/UserManagement";
-import { MenuManagement } from "./components/MenuManagement";
 import { CategoryRegistration } from "./components/CategoryRegistration";
 import { TransactionRegistration } from "./components/TransactionRegistration";
 import { Reports } from "./components/Reports";
@@ -14,12 +11,14 @@ import { Login } from "./components/Login";
 import { CreateAccount } from "./components/CreateAccount";
 import { ForgotPassword } from "./components/ForgotPassword";
 import { Toaster } from "./components/ui/sonner";
-import { UserProvider } from "./contexts/UserContext";
+import { UserProvider, useUser } from "./contexts/UserContext";
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState("dashboard");
+function AppContent() {
+  const { isAuthenticated, isLoading } = useUser();
+  const [currentPage, setCurrentPage] = useState("login"); // Começar na página de login
   const [isDark, setIsDark] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
@@ -31,6 +30,21 @@ export default function App() {
       document.documentElement.classList.add('dark');
     }
   }, []);
+
+  // Redirect to login if not authenticated (unless already on auth pages)
+  useEffect(() => {
+    try {
+      if (!isLoading && !isAuthenticated && !['login', 'create-account', 'forgot-password'].includes(currentPage)) {
+        setCurrentPage('login');
+      } else if (isAuthenticated && ['login', 'create-account', 'forgot-password'].includes(currentPage)) {
+        setCurrentPage('dashboard');
+      }
+    } catch (err) {
+      console.error('Erro no useEffect de redirecionamento:', err);
+      setError('Erro ao carregar aplicação');
+      setCurrentPage('login');
+    }
+  }, [isAuthenticated, isLoading, currentPage]);
 
   const toggleTheme = () => {
     const newTheme = !isDark;
@@ -46,15 +60,10 @@ export default function App() {
   };
 
   const renderPage = () => {
+    try {
     switch (currentPage) {
       case "dashboard":
-        return <Dashboard />;
-      case "users":
-        return <UserRegistration />;
-      case "user-management":
-        return <UserManagement />;
-      case "menu-management":
-        return <MenuManagement />;
+        return <Dashboard onPageChange={setCurrentPage} />;
       case "categories":
         return <CategoryRegistration />;
       case "transactions":
@@ -72,24 +81,50 @@ export default function App() {
       case "forgot-password":
         return <ForgotPassword onPageChange={setCurrentPage} />;
       default:
-        return <Dashboard />;
+          return <Login onPageChange={setCurrentPage} />;
+      }
+    } catch (err) {
+      console.error('Erro ao renderizar página:', err);
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-500 via-orange-400 to-amber-500 p-4">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Erro ao carregar</h1>
+            <p className="text-gray-600 mb-4">Ocorreu um erro ao carregar a aplicação.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+            >
+              Recarregar página
+            </button>
+          </div>
+        </div>
+      );
     }
   };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-500 via-orange-400 to-amber-500">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg font-medium">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Se for uma página de autenticação, renderiza em tela cheia
   if (['login', 'create-account', 'forgot-password'].includes(currentPage)) {
     return (
-      <UserProvider>
         <div className="min-h-screen">
           {renderPage()}
           <Toaster />
         </div>
-      </UserProvider>
     );
   }
 
   return (
-    <UserProvider>
       <div className="min-h-screen bg-gray-100 dark:bg-gray-800 transition-colors">
         <Header 
           isDark={isDark}
@@ -115,6 +150,13 @@ export default function App() {
         
         <Toaster />
       </div>
+  );
+}
+
+export default function App() {
+  return (
+    <UserProvider>
+      <AppContent />
     </UserProvider>
   );
 }
